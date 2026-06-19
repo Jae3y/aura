@@ -1,0 +1,19 @@
+import 'express';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        walletAddress: string | null;
+        email: string;
+      };
+      wallet?: {
+        address: string;
+      };
+      rawBody?: Buffer;
+    }
+  }
+}
+
+export {};
