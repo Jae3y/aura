@@ -1,5 +1,6 @@
-// Route group layout for (app) - no extra wrapper needed
-// AppShell in root layout already handles TopBar + BottomNav
+'use client';
+import { WalletGuard } from '@/components/auth/WalletGuard';
+
 export default function AppGroupLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return <WalletGuard>{children}</WalletGuard>;
 }

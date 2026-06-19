@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Cpu, Fingerprint, ArrowRight, ChevronDown } from "lucide-react";
+import { WalletGuard } from '@/components/auth/WalletGuard';
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 import { ParticleField } from "@/components/ui/ParticleField";
@@ -62,7 +63,8 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div ref={containerRef} className="relative flex flex-col w-full min-h-screen overflow-hidden bg-base" suppressHydrationWarning>
+    <WalletGuard>
+      <div ref={containerRef} className="relative flex flex-col w-full min-h-screen overflow-hidden bg-base" suppressHydrationWarning>
       {/* Cinematic background */}
       <div className="absolute inset-0 pointer-events-none">
         <HexGrid rows={10} cols={8} highlightIndices={[4, 11, 18, 25, 32, 39, 10, 22]} />
@@ -249,6 +251,7 @@ export default function OnboardingPage() {
           </div>
         </div>
       </motion.div>
-    </div>
+      </div>
+    </WalletGuard>
   );
 }

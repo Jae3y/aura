@@ -1,10 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { Fingerprint, Bell, ToggleLeft, Info, Key, RotateCcw, ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Fingerprint, Bell, ToggleLeft, Info, Key, RotateCcw, ChevronRight, Activity, Zap, FileText } from "lucide-react";
 import { RelayToggle } from "@/components/ui/RelayToggle";
 import { pageTransitionVariants } from "@/lib/animations";
+import { useDevices } from '@/lib/queries/useDevices';
+import { apiClient } from '@/lib/api/client';
+import { toast } from '@/lib/toast';
 
 export default function SettingsPage() {
   const [sensitivity, setSensitivity] = useState(72);
@@ -12,6 +15,50 @@ export default function SettingsPage() {
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [criticalAlerts, setCriticalAlerts] = useState(true);
   const [testnetMode, setTestnetMode] = useState(true);
+
+  const { data: devices } = useDevices();
+  const [selectedSimDevice, setSelectedSimDevice] = useState<string>("");
+  const [isSimulatingThreat, setIsSimulatingThreat] = useState(false);
+  const [isSimulatingAudit, setIsSimulatingAudit] = useState(false);
+
+  // Set default selected device once loaded
+  useEffect(() => {
+    if (devices && devices.length > 0 && !selectedSimDevice) {
+      setSelectedSimDevice(devices[0].id);
+    }
+  }, [devices, selectedSimDevice]);
+
+  const handleSimulateThreat = async () => {
+    if (!selectedSimDevice) {
+      toast.error("Please select a device node to simulate");
+      return;
+    }
+    setIsSimulatingThreat(true);
+    try {
+      await apiClient.post(`/devices/${selectedSimDevice}/simulate-threat`);
+      toast.success("Simulated electrical surge anomaly recorded!");
+    } catch (err: any) {
+      toast.error(err.message || "Threat simulation failed");
+    } finally {
+      setIsSimulatingThreat(false);
+    }
+  };
+
+  const handleSimulateAudit = async () => {
+    if (!selectedSimDevice) {
+      toast.error("Please select a device node to simulate");
+      return;
+    }
+    setIsSimulatingAudit(true);
+    try {
+      const res = await apiClient.post<{ report?: { lisk_tx_id?: string } }>(`/devices/${selectedSimDevice}/simulate-audit`);
+      toast.success(`Lisk Audit Sync complete! Transaction: ${res.report?.lisk_tx_id || 'Mock signature'}`);
+    } catch (err: any) {
+      toast.error(err.message || "Audit simulation failed");
+    } finally {
+      setIsSimulatingAudit(false);
+    }
+  };
 
   return (
     <motion.div
@@ -156,6 +203,62 @@ export default function SettingsPage() {
           <span className="text-sm font-bold text-white pl-[38px]">View Pairing Guide</span>
           <ChevronRight size={16} className="text-text-muted group-hover:text-white transition-colors" />
         </button>
+      </section>
+
+      {/* System Test & Simulation Suite */}
+      <section className="bg-card border border-zinc-800 rounded-xl p-5 space-y-4">
+        <div className="flex items-center space-x-2 mb-1">
+          <Activity size={18} className="text-green-500" />
+          <h3 className="text-xs font-bold text-white tracking-widest uppercase">System Simulator Suite</h3>
+        </div>
+        <p className="text-[10px] text-text-muted leading-relaxed">
+          Simulate real-time anomalies and audit digests to test the Solana ledger verification, Alerta notification routing, and Lisk audit protocols.
+        </p>
+
+        {devices && devices.length > 0 ? (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-mono uppercase text-zinc-500">Target Device Node</label>
+              <select
+                value={selectedSimDevice}
+                onChange={(e) => setSelectedSimDevice(e.target.value)}
+                className="w-full bg-zinc-900/50 border border-zinc-800 focus:border-green-500 rounded px-3 py-2 text-sm text-zinc-100 outline-none cursor-pointer"
+              >
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name} ({d.location_label || "Main"})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleSimulateThreat}
+                disabled={isSimulatingThreat}
+                className="flex items-center justify-center space-x-2 py-3 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 rounded font-semibold text-xs transition-colors"
+              >
+                <Zap size={14} />
+                <span>{isSimulatingThreat ? "Simulating..." : "Simulate Surge"}</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleSimulateAudit}
+                disabled={isSimulatingAudit}
+                className="flex items-center justify-center space-x-2 py-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 rounded font-semibold text-xs transition-colors"
+              >
+                <FileText size={14} />
+                <span>{isSimulatingAudit ? "Syncing..." : "Simulate Audit"}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-2 border border-dashed border-zinc-800 rounded">
+            <p className="text-xs text-text-muted">No active devices paired to run simulations.</p>
+          </div>
+        )}
       </section>
 
       {/* Danger Zone */}
