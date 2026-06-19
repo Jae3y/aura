@@ -11,8 +11,9 @@ interface WalletGuardProps {
 
 export function WalletGuard({ children }: WalletGuardProps) {
   const router = useRouter();
-  const { connected, disconnect } = useWallet();
-  const { isAuthenticated, clearSession } = useAuthStore();
+  const { connected } = useWallet();
+  const { isAuthenticated, profile, clearSession } = useAuthStore();
+  const isWalletUser = !!profile?.wallet_address;
 
   useEffect(() => {
     // Redirect to connect page if not authenticated
@@ -21,33 +22,33 @@ export function WalletGuard({ children }: WalletGuardProps) {
       return;
     }
 
-    // Clear session if wallet disconnected
-    if (!connected && isAuthenticated) {
+    // Clear session if wallet disconnected (only for wallet users)
+    if (isWalletUser && !connected && isAuthenticated) {
       clearSession();
       router.push('/connect');
     }
-  }, [isAuthenticated, connected, router, clearSession]);
+  }, [isAuthenticated, connected, router, clearSession, isWalletUser]);
 
   // Handle wallet disconnect
   useEffect(() => {
     const handleDisconnect = () => {
-      if (isAuthenticated) {
+      if (isAuthenticated && isWalletUser) {
         clearSession();
         router.push('/connect');
       }
     };
 
     // Listen for wallet disconnect events
-    if (connected) {
+    if (isWalletUser && connected) {
       window.addEventListener('wallet_disconnect', handleDisconnect);
       return () => {
         window.removeEventListener('wallet_disconnect', handleDisconnect);
       };
     }
-  }, [connected, isAuthenticated, clearSession, router]);
+  }, [connected, isAuthenticated, clearSession, router, isWalletUser]);
 
   // Show loading state while checking auth
-  if (!isAuthenticated || !connected) {
+  if (!isAuthenticated || (isWalletUser && !connected)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="text-center space-y-4">

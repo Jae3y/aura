@@ -8,12 +8,14 @@ export function useAuth() {
   const { connected, publicKey } = useWallet();
   const { isAuthenticated, session, profile, clearSession } = useAuthStore();
 
-  // Auto-logout when wallet disconnects
+  const isWalletUser = !!profile?.wallet_address;
+
+  // Auto-logout when wallet disconnects (only for wallet users)
   useEffect(() => {
-    if (!connected && isAuthenticated) {
+    if (isWalletUser && !connected && isAuthenticated) {
       clearSession();
     }
-  }, [connected, isAuthenticated, clearSession]);
+  }, [connected, isAuthenticated, clearSession, isWalletUser]);
 
   // Token refresh logic
   useEffect(() => {

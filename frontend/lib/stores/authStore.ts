@@ -8,7 +8,7 @@ interface Session {
   expires_at: number;
   user: {
     id: string;
-    wallet_address: string;
+    wallet_address: string | null;
   };
 }
 

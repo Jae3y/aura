@@ -8,6 +8,18 @@ interface LoginPayload {
   message: string;
 }
 
+export interface EmailRegisterPayload {
+  email: string;
+  password:  string;
+  fullName?: string;
+  environmentType?: 'home' | 'hospital' | 'industrial';
+}
+
+export interface EmailLoginPayload {
+  email: string;
+  password:  string;
+}
+
 interface AuthResponse {
   access_token: string;
   refresh_token: string;
@@ -87,6 +99,22 @@ class AuthAPI {
     return normalizeAuthResponse(data, payload.walletAddress);
   }
 
+  async emailRegister(payload: EmailRegisterPayload): Promise<AuthResponse> {
+    const data = await this.request<any>('/auth/email-register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return normalizeAuthResponse(data, '');
+  }
+
+  async emailLogin(payload: EmailLoginPayload): Promise<AuthResponse> {
+    const data = await this.request<any>('/auth/email-login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return normalizeAuthResponse(data, '');
+  }
+
   async logout(token: string): Promise<void> {
     return this.request<void>('/auth/logout', {
       method: 'POST',
@@ -117,7 +145,7 @@ class AuthAPI {
 
 export const authAPI = new AuthAPI();
 
-function normalizeAuthResponse(data: BackendAuthResponse, walletAddress: string): AuthResponse {
+function normalizeAuthResponse(data: any, walletAddress: string): AuthResponse {
   if (!data.session) throw new Error('Authentication response missing session');
   const user = data.user ?? data.session.user;
   if (!user) throw new Error('Authentication response missing user');
@@ -131,15 +159,15 @@ function normalizeAuthResponse(data: BackendAuthResponse, walletAddress: string)
     expires_at: data.session.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
     user: {
       id: user.id,
-      wallet_address: walletAddress,
+      wallet_address: walletAddress || data.profile?.wallet_address || null,
     },
-    profile: {
+    profile: data.profile ?? {
       id: user.id,
       full_name: null,
       email,
       avatar_url: null,
       environment_type: 'home',
-      wallet_address: walletAddress,
+      wallet_address: walletAddress || null,
       lisk_wallet_address: null,
       fcm_token: null,
       notification_email: true,

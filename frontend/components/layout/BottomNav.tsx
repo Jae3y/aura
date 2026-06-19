@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Radar, SlidersHorizontal, List, Settings, Wallet } from "lucide-react";
+import { Home, Radar, SlidersHorizontal, List, Settings, Wallet, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
@@ -55,6 +55,17 @@ export function BottomNav() {
             <span className="text-[10px] font-mono tracking-tight">
               {walletAddress.slice(0, 4)}…{walletAddress.slice(-4)}
             </span>
+          </Link>
+        )}
+
+        {/* Profile indicator — shown when authenticated via email without wallet */}
+        {isAuthenticated && !walletAddress && (
+          <Link
+            href="/settings"
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 text-accent-cyan"
+          >
+            <User size={20} className="drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
+            <span className="text-[10px] uppercase font-bold tracking-wider">Profile</span>
           </Link>
         )}
 

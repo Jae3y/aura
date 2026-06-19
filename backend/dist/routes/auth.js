@@ -22,6 +22,16 @@ const loginSchema = zod_1.z.object({
     signature: zod_1.z.string().min(1),
     message: zod_1.z.string().min(1),
 });
+const emailRegisterSchema = zod_1.z.object({
+    email: zod_1.z.string().email(),
+    password: zod_1.z.string().min(6),
+    fullName: zod_1.z.string().optional(),
+    environmentType: zod_1.z.enum(['home', 'hospital', 'industrial']).optional(),
+});
+const emailLoginSchema = zod_1.z.object({
+    email: zod_1.z.string().email(),
+    password: zod_1.z.string().min(6),
+});
 function verifyWalletSignature(addr, sig, msg) {
     try {
         const pubkey = new web3_js_1.PublicKey(addr);
@@ -124,6 +134,64 @@ router.patch('/fcm-token', auth_1.authMiddleware, async (req, res, next) => {
         const token = zod_1.z.string().min(1).parse(req.body?.token);
         await (0, profiles_1.updateFcmToken)(req.user.id, token);
         res.json({ ok: true });
+    }
+    catch (err) {
+        next(err);
+    }
+});
+router.post('/email-register', async (req, res, next) => {
+    try {
+        const { email, password, fullName, environmentType } = emailRegisterSchema.parse(req.body);
+        // Create the user in Supabase auth
+        const { data: userData, error: createError } = await supabase_1.supabaseAdmin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+        });
+        if (createError) {
+            throw new errorHandler_1.HttpError(400, createError.message);
+        }
+        const user = userData.user;
+        if (!user) {
+            throw new errorHandler_1.HttpError(500, 'Failed to create user in identity provider');
+        }
+        // Create profile
+        const profile = await (0, profiles_1.upsertProfile)({
+            id: user.id,
+            email: email.toLowerCase(),
+            full_name: fullName || null,
+            environment_type: environmentType || 'home',
+            wallet_address: null,
+        });
+        // Sign in to get session tokens
+        const { data: sessionData, error: loginError } = await supabase_1.supabaseAnon.auth.signInWithPassword({
+            email,
+            password,
+        });
+        if (loginError || !sessionData.session) {
+            throw new errorHandler_1.HttpError(401, 'Authentication failed after registration');
+        }
+        res.status(201).json({ session: sessionData.session, user: sessionData.user, profile });
+    }
+    catch (err) {
+        next(err);
+    }
+});
+router.post('/email-login', async (req, res, next) => {
+    try {
+        const { email, password } = emailLoginSchema.parse(req.body);
+        const { data: sessionData, error: loginError } = await supabase_1.supabaseAnon.auth.signInWithPassword({
+            email,
+            password,
+        });
+        if (loginError || !sessionData.session) {
+            throw new errorHandler_1.HttpError(401, 'Invalid email or password');
+        }
+        const profile = await (0, profiles_1.getProfileById)(sessionData.user.id);
+        if (!profile) {
+            throw new errorHandler_1.HttpError(404, 'User profile not found');
+        }
+        res.json({ session: sessionData.session, user: sessionData.user, profile });
     }
     catch (err) {
         next(err);
