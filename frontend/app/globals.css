@@ -87,6 +87,26 @@
 }
 
 @layer components {
+  .panel-surface {
+    background: linear-gradient(180deg, rgba(24, 24, 27, 0.92), rgba(9, 9, 11, 0.94));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  }
+
+  .panel-card {
+    background: rgba(13, 13, 13, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+  }
+
+  .section-label {
+    color: var(--color-accent-cyan);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
   /* Boot-up grid flicker animation */
   @keyframes boot-flicker {
     0%, 100% { opacity: 1; }

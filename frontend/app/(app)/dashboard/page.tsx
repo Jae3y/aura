@@ -12,6 +12,7 @@ import { HexGrid } from "@/components/ui/HexGrid";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 import { PriorityAlertModal } from "@/components/ui/PriorityAlertModal";
 import { pageTransitionVariants, staggerParentVariants, staggerChildVariants, pulseNominalVariants, cardHoverVariants } from "@/lib/animations";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const [alertOpen, setAlertOpen] = useState(false);
@@ -184,6 +185,12 @@ export default function DashboardPage() {
                 className="w-full h-20"
               />
             </motion.div>
+            <Link href="/devices" className="col-span-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-text-secondary transition-colors hover:bg-white/10 hover:text-white sm:col-span-1">
+              Manage Devices
+            </Link>
+            <Link href="/alerta" className="col-span-2 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-red-200 transition-colors hover:bg-red-400/20 sm:col-span-1">
+              Open Alerta
+            </Link>
           </div>
         </motion.div>
 

@@ -1,64 +1,64 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
-import { Fingerprint, Bell, ToggleLeft, Info, Key, RotateCcw, ChevronRight, Activity, Zap, FileText } from "lucide-react";
+import { useState } from "react";
+import { Bell, ToggleLeft, Info, RotateCcw, ChevronRight, Activity, Zap, FileText } from "lucide-react";
 import { RelayToggle } from "@/components/ui/RelayToggle";
 import { pageTransitionVariants } from "@/lib/animations";
 import { useDevices } from '@/lib/queries/useDevices';
 import { apiClient } from '@/lib/api/client';
 import { toast } from '@/lib/toast';
-import { WalletLinkButton } from "@/components/auth/WalletLinkButton";
 
 export default function SettingsPage() {
   const [sensitivity, setSensitivity] = useState(72);
   const [alertThreshold, setAlertThreshold] = useState(45);
-  const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [criticalAlerts, setCriticalAlerts] = useState(true);
   const [testnetMode, setTestnetMode] = useState(true);
 
   const { data: devices } = useDevices();
   const [selectedSimDevice, setSelectedSimDevice] = useState<string>("");
+  const activeSimDevice = selectedSimDevice || devices?.[0]?.id || "";
   const [isSimulatingThreat, setIsSimulatingThreat] = useState(false);
   const [isSimulatingAudit, setIsSimulatingAudit] = useState(false);
 
-  // Set default selected device once loaded
-  useEffect(() => {
-    if (devices && devices.length > 0 && !selectedSimDevice) {
-      setSelectedSimDevice(devices[0].id);
-    }
-  }, [devices, selectedSimDevice]);
-
   const handleSimulateThreat = async () => {
-    if (!selectedSimDevice) {
+    if (!activeSimDevice) {
       toast.error("Please select a device node to simulate");
       return;
     }
     setIsSimulatingThreat(true);
     try {
-      await apiClient.post(`/devices/${selectedSimDevice}/simulate-threat`);
+      await apiClient.post(`/devices/${activeSimDevice}/simulate-threat`);
       toast.success("Simulated electrical surge anomaly recorded!");
-    } catch (err: any) {
-      toast.error(err.message || "Threat simulation failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Threat simulation failed");
     } finally {
       setIsSimulatingThreat(false);
     }
   };
 
   const handleSimulateAudit = async () => {
-    if (!selectedSimDevice) {
+    if (!activeSimDevice) {
       toast.error("Please select a device node to simulate");
       return;
     }
     setIsSimulatingAudit(true);
     try {
-      const res = await apiClient.post<{ report?: { lisk_tx_id?: string } }>(`/devices/${selectedSimDevice}/simulate-audit`);
+      const res = await apiClient.post<{ report?: { lisk_tx_id?: string } }>(`/devices/${activeSimDevice}/simulate-audit`);
       toast.success(`Lisk Audit Sync complete! Transaction: ${res.report?.lisk_tx_id || 'Mock signature'}`);
-    } catch (err: any) {
-      toast.error(err.message || "Audit simulation failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Audit simulation failed");
     } finally {
       setIsSimulatingAudit(false);
     }
+  };
+
+  const handleResetLocalConfig = () => {
+    setSensitivity(72);
+    setAlertThreshold(45);
+    setCriticalAlerts(true);
+    setTestnetMode(true);
+    toast.success("Local command center preferences reset");
   };
 
   return (
@@ -111,22 +111,9 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Access & Security */}
+      {/* Notification Routing */}
       <section className="bg-card border border-zinc-800 rounded-xl p-5 space-y-4">
-        <h3 className="text-xs font-bold text-text-muted tracking-widest uppercase">Access & Security</h3>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Fingerprint size={18} className="text-text-secondary" />
-            <div>
-              <div className="text-sm font-bold text-white">Biometric Unlock</div>
-              <div className="text-[10px] text-text-muted">Device fingerprint / Face ID</div>
-            </div>
-          </div>
-          <RelayToggle active={biometricEnabled} onChange={setBiometricEnabled} />
-        </div>
-
-        <div className="h-px w-full bg-zinc-800" />
+        <h3 className="text-xs font-bold text-text-muted tracking-widest uppercase">Notification Routing</h3>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -138,10 +125,6 @@ export default function SettingsPage() {
           </div>
           <RelayToggle active={criticalAlerts} onChange={setCriticalAlerts} />
         </div>
-
-        <div className="h-px w-full bg-zinc-800" />
-
-        <WalletLinkButton />
       </section>
 
       {/* Solana Network */}
@@ -171,16 +154,12 @@ export default function SettingsPage() {
 
         <div className="h-px w-full bg-zinc-800" />
 
-        <button className="flex items-center justify-between w-full text-left group">
-          <div className="flex items-center space-x-3">
-            <Key size={18} className="text-text-secondary" />
-            <div>
-              <div className="text-sm font-bold text-white">Rotate Wallet Keys</div>
-              <div className="text-[10px] text-text-muted">Re-derive signing keypair</div>
-            </div>
+        <div className="rounded-lg border border-dashed border-zinc-800 p-3">
+          <div className="text-sm font-bold text-white">Wallet key rotation unavailable</div>
+          <div className="mt-1 text-[10px] text-text-muted">
+            Use Profile and Access Control for identity changes. Automatic key rotation is not wired in this build.
           </div>
-          <ChevronRight size={16} className="text-text-muted group-hover:text-white transition-colors" />
-        </button>
+        </div>
       </section>
 
       {/* Core Infrastructure */}
@@ -204,7 +183,7 @@ export default function SettingsPage() {
 
         <div className="h-px w-full bg-zinc-800" />
 
-        <button className="flex items-center justify-between w-full text-left group pl-0">
+        <button type="button" className="flex items-center justify-between w-full text-left group pl-0" onClick={() => toast.success("Pairing guide opens from the Connect flow")}>
           <span className="text-sm font-bold text-white pl-[38px]">View Pairing Guide</span>
           <ChevronRight size={16} className="text-text-muted group-hover:text-white transition-colors" />
         </button>
@@ -225,7 +204,7 @@ export default function SettingsPage() {
             <div className="space-y-1">
               <label className="text-[10px] font-mono uppercase text-zinc-500">Target Device Node</label>
               <select
-                value={selectedSimDevice}
+                value={activeSimDevice}
                 onChange={(e) => setSelectedSimDevice(e.target.value)}
                 className="w-full bg-zinc-900/50 border border-zinc-800 focus:border-green-500 rounded px-3 py-2 text-sm text-zinc-100 outline-none cursor-pointer"
               >
@@ -268,7 +247,7 @@ export default function SettingsPage() {
 
       {/* Danger Zone */}
       <div className="pt-2">
-        <button className="w-full flex items-center justify-center space-x-2 py-4 border border-accent-danger/30 rounded-lg text-accent-danger text-xs font-bold tracking-widest uppercase hover:bg-accent-danger/10 transition-colors">
+        <button type="button" onClick={handleResetLocalConfig} className="w-full flex items-center justify-center space-x-2 py-4 border border-accent-danger/30 rounded-lg text-accent-danger text-xs font-bold tracking-widest uppercase hover:bg-accent-danger/10 transition-colors">
           <RotateCcw size={16} />
           <span>Reset Command Center</span>
         </button>

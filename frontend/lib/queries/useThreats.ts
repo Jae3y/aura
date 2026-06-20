@@ -4,13 +4,14 @@ import { apiClient } from '../api/client';
 import { toast } from '../toast';
 import type { ThreatEvent } from '../types/database';
 import { mockThreats } from '../mock-data';
+import { config } from '../config';
 
 export const threatKeys = {
   all: ['threats'] as const,
   byDevice: (deviceId: string | null) => [...threatKeys.all, deviceId] as const,
 };
 
-export function useThreats(deviceId: string | null, limit = 100, useMockData = false): UseQueryResult<ThreatEvent[], Error> {
+export function useThreats(deviceId: string | null, limit = 100, useMockData = config.features.mockData): UseQueryResult<ThreatEvent[], Error> {
   return useQuery<ThreatEvent[]>({
     queryKey: [...threatKeys.byDevice(deviceId), limit],
     queryFn: async () => {

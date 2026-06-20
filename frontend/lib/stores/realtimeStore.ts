@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Database } from '../types/database';
+import type { AlertaStatus, Database } from '../types/database';
 
 type Device = Database['public']['Tables']['devices']['Row'];
 type SensorReading = Database['public']['Tables']['sensor_readings']['Row'];
@@ -26,7 +26,7 @@ interface RealtimeState {
   addReading: (reading: SensorReading) => void;
   addThreat: (threat: ThreatEvent) => void;
   updateThreat: (threatId: string, updates: Partial<ThreatEvent>) => void;
-  updateAlertaStatus: (threatId: string, alertaStatus: string) => void;
+  updateAlertaStatus: (threatId: string, alertaStatus: AlertaStatus) => void;
   
   setConnected: (connected: boolean) => void;
   clearAll: () => void;
@@ -103,7 +103,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
     set((state) => ({
       recentThreats: state.recentThreats.map((threat) =>
         threat.id === threatId
-          ? { ...threat, alerta_status: alertaStatus as any }
+          ? { ...threat, alerta_status: alertaStatus }
           : threat
       ),
     })),

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldAlert, AlertTriangle, Fingerprint, Zap, Volume2, Flashlight } from "lucide-react";
+import { ShieldAlert, AlertTriangle, Fingerprint, Zap, Volume2 } from "lucide-react";
 import { GlitchText } from "@/components/ui/GlitchText";
 import { ParticleField } from "@/components/ui/ParticleField";
 import { ScanLine } from "@/components/ui/ScanLine";
@@ -14,7 +14,7 @@ import { useThreats } from "@/lib/queries/useThreats";
 export default function ThreatMonitorPage() {
   const [countdown, setCountdown] = useState(42 * 60 + 12); // 42:12
   const { data: threats = [] } = useThreats("1", 100, true);
-  const activeThreat = threats.find(t => (t as any).status === "open") || threats[0];
+  const activeThreat = threats.find((threat) => threat.alerta_status === "open") || threats[0];
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -61,12 +61,12 @@ export default function ThreatMonitorPage() {
             </motion.div>
             <div>
               <GlitchText
-                text={(activeThreat as any).type.replace("_", " ").toUpperCase()}
+                text={activeThreat.event_type.replace("_", " ").toUpperCase()}
                 color="red"
                 size="md"
               />
               <div className="text-xs font-mono text-accent-danger/80 bg-accent-danger/20 px-2 py-0.5 rounded border border-accent-danger/30 uppercase tracking-wider inline-block mt-2">
-                {(activeThreat as any).source} · {(activeThreat as any).description}
+                Device {activeThreat.device_id} · {activeThreat.action_taken ?? "Response pending"}
               </div>
             </div>
           </motion.div>

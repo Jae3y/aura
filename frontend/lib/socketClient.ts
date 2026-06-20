@@ -3,7 +3,7 @@ import { config } from './config';
 import { useAuthStore } from './stores/authStore';
 import * as Sentry from '@sentry/nextjs';
 
-type SocketEventCallback = (...args: any[]) => void;
+type SocketEventCallback<TArgs extends unknown[] = unknown[]> = (...args: TArgs) => void;
 
 class SocketClient {
   private socket: Socket | null = null;
@@ -106,26 +106,26 @@ class SocketClient {
     this.deviceRooms.delete(deviceId);
   }
 
-  on(event: string, callback: SocketEventCallback) {
+  on<TArgs extends unknown[]>(event: string, callback: SocketEventCallback<TArgs>) {
     if (!this.socket) {
       console.warn('Socket not initialized');
       return;
     }
 
-    this.socket.on(event, callback);
+    this.socket.on(event, callback as (...args: unknown[]) => void);
   }
 
-  off(event: string, callback?: SocketEventCallback) {
+  off<TArgs extends unknown[]>(event: string, callback?: SocketEventCallback<TArgs>) {
     if (!this.socket) return;
 
     if (callback) {
-      this.socket.off(event, callback);
+      this.socket.off(event, callback as (...args: unknown[]) => void);
     } else {
       this.socket.off(event);
     }
   }
 
-  emit(event: string, ...args: any[]) {
+  emit(event: string, ...args: unknown[]) {
     if (!this.socket?.connected) {
       console.warn('Cannot emit: socket not connected');
       return;

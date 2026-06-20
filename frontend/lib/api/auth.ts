@@ -26,7 +26,7 @@ interface AuthResponse {
   expires_at: number;
   user: {
     id: string;
-    wallet_address: string;
+    wallet_address: string | null;
   };
   profile: Profile;
 }
@@ -47,6 +47,7 @@ interface BackendAuthResponse {
     email?: string;
     user_metadata?: Record<string, unknown>;
   };
+  profile?: Profile;
 }
 
 class AuthAPI {
@@ -100,7 +101,7 @@ class AuthAPI {
   }
 
   async emailRegister(payload: EmailRegisterPayload): Promise<AuthResponse> {
-    const data = await this.request<any>('/auth/email-register', {
+    const data = await this.request<BackendAuthResponse>('/auth/email-register', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -108,7 +109,7 @@ class AuthAPI {
   }
 
   async emailLogin(payload: EmailLoginPayload): Promise<AuthResponse> {
-    const data = await this.request<any>('/auth/email-login', {
+    const data = await this.request<BackendAuthResponse>('/auth/email-login', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -155,7 +156,7 @@ class AuthAPI {
 
 export const authAPI = new AuthAPI();
 
-function normalizeAuthResponse(data: any, walletAddress: string): AuthResponse {
+function normalizeAuthResponse(data: BackendAuthResponse, walletAddress: string): AuthResponse {
   if (!data.session) throw new Error('Authentication response missing session');
   const user = data.user ?? data.session.user;
   if (!user) throw new Error('Authentication response missing user');

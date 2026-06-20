@@ -6,15 +6,18 @@ import { RealtimeProvider } from "@/components/providers/RealtimeProvider";
 import { ErrorBoundary } from "@/components/providers/ErrorBoundary";
 import { AppShell } from "@/components/layout/AppShell";
 import { validateConfig } from "@/lib/config";
-import { Inter, Orbitron } from 'next/font/google';
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-const orbitron = Orbitron({ subsets: ['latin'], variable: '--font-orbitron' });
 
 export const metadata: Metadata = {
   title: "AURA - Autonomous Utility & Response Assistant",
   description: "Military-grade IoT security system with blockchain verification",
   manifest: "/manifest.json",
+  applicationName: "AURA",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  openGraph: {
+    title: "AURA Command PWA",
+    description: "Installable IoT security command center for mobile and desktop.",
+    type: "website",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -45,7 +48,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
-      <body className={`min-h-full flex flex-col bg-base text-text-primary font-sans antialiased ${inter.variable} ${orbitron.variable}`}>
+      <body className="min-h-full flex flex-col bg-base text-text-primary font-sans antialiased">
         <ErrorBoundary>
           <QueryProvider>
             <WalletProvider>

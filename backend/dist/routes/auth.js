@@ -131,9 +131,37 @@ router.post('/logout', auth_1.authMiddleware, async (req, res, next) => {
 });
 router.patch('/fcm-token', auth_1.authMiddleware, async (req, res, next) => {
     try {
-        const token = zod_1.z.string().min(1).parse(req.body?.token);
+        const token = zod_1.z.string().min(1).parse(req.body?.fcm_token);
         await (0, profiles_1.updateFcmToken)(req.user.id, token);
         res.json({ ok: true });
+    }
+    catch (err) {
+        next(err);
+    }
+});
+router.patch('/profile', auth_1.authMiddleware, async (req, res, next) => {
+    try {
+        const { full_name, avatar_url, environment_type, wallet_address, lisk_wallet_address, notification_email, notification_push, } = req.body;
+        const updates = {};
+        if (full_name !== undefined)
+            updates.full_name = full_name;
+        if (avatar_url !== undefined)
+            updates.avatar_url = avatar_url;
+        if (environment_type !== undefined)
+            updates.environment_type = environment_type;
+        if (wallet_address !== undefined)
+            updates.wallet_address = wallet_address;
+        if (lisk_wallet_address !== undefined)
+            updates.lisk_wallet_address = lisk_wallet_address;
+        if (notification_email !== undefined)
+            updates.notification_email = notification_email;
+        if (notification_push !== undefined)
+            updates.notification_push = notification_push;
+        const profile = await (0, profiles_1.upsertProfile)({
+            id: req.user.id,
+            ...updates,
+        });
+        res.json({ profile });
     }
     catch (err) {
         next(err);

@@ -7,6 +7,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { authAPI } from '@/lib/api/auth';
 import { toast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
+import type { EnvironmentType } from '@/lib/types/database';
 
 export default function ConnectPage() {
   const router = useRouter();
@@ -73,9 +74,9 @@ export default function ConnectPage() {
         toast.success('Login successful');
       }
       router.push('/dashboard');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || 'Authentication failed');
+      toast.error(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
@@ -183,7 +184,7 @@ export default function ConnectPage() {
                     <label className="text-xs font-mono uppercase text-zinc-500">Deployment Environment</label>
                     <select
                       value={environmentType}
-                      onChange={(e) => setEnvironmentType(e.target.value as any)}
+                      onChange={(e) => setEnvironmentType(e.target.value as EnvironmentType)}
                       className="w-full bg-zinc-900/50 border border-zinc-800 focus:border-green-500 rounded px-3 py-2 text-sm text-zinc-100 outline-none transition-colors cursor-pointer"
                     >
                       <option value="home">Home / Domestic Node</option>

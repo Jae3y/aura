@@ -11,17 +11,17 @@ import {
 } from "lucide-react";
 import { pageTransitionVariants } from "@/lib/animations";
 import { useThreats } from "@/lib/queries/useThreats";
+import type { AlertaStatus } from "@/lib/types/database";
 
 export default function AlertaPage() {
   const [activeFilter, setActiveFilter] = useState<
-    "all" | "open" | "acknowledged" | "closed"
+    "all" | AlertaStatus
   >("all");
   const { data: threats = [] } = useThreats("1", 100, true);
 
   const filteredThreats = threats.filter((threat) => {
     if (activeFilter === "all") return true;
-    // @ts-ignore
-    return threat.status === activeFilter;
+    return threat.alerta_status === activeFilter;
   });
 
   return (
@@ -46,13 +46,13 @@ export default function AlertaPage() {
         {[
           {
             label: "Open Alerts",
-            value: threats.filter((t: any) => t.status === "open").length.toString(),
+            value: threats.filter((t) => t.alerta_status === "open").length.toString(),
             icon: AlertTriangle,
             color: "text-red-400",
           },
           {
             label: "Acknowledged",
-            value: threats.filter((t: any) => t.status === "acknowledged").length.toString(),
+            value: threats.filter((t) => t.alerta_status === "ack").length.toString(),
             icon: Bell,
             color: "text-orange-400",
           },
@@ -86,7 +86,7 @@ export default function AlertaPage() {
       </section>
 
       <div className="flex flex-wrap gap-3">
-        {(["all", "open", "acknowledged", "closed"] as const).map((filter) => (
+        {(["all", "open", "ack", "closed"] as const).map((filter) => (
           <button
             key={filter}
             onClick={() => setActiveFilter(filter)}
@@ -102,7 +102,7 @@ export default function AlertaPage() {
       </div>
 
       <section className="space-y-4">
-        {filteredThreats.map((threat: any, index) => (
+        {filteredThreats.map((threat, index) => (
           <motion.div
             key={threat.id}
             initial={{ opacity: 0, x: -20 }}
@@ -114,27 +114,27 @@ export default function AlertaPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-bold text-white">
-                    {threat.type.replace("_", " ")}
+                    {threat.event_type.replace("_", " ")}
                   </h3>
                   <p className="mt-2 text-sm text-text-secondary">
-                    {threat.description}
+                    {threat.action_taken ?? "No action recorded yet."}
                   </p>
                   <p className="mt-2 text-xs text-text-muted">
-                    Source: {threat.source} •{" "}
+                    Device: {threat.device_id} •{" "}
                     {new Date(threat.occurred_at).toLocaleString()}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
                   <span
                     className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] ${
-                      threat.status === "open"
+                      threat.alerta_status === "open"
                         ? "bg-red-500/20 text-red-400"
-                        : threat.status === "acknowledged"
+                        : threat.alerta_status === "ack"
                         ? "bg-orange-500/20 text-orange-400"
                         : "bg-emerald-500/20 text-emerald-400"
                     }`}
                   >
-                    {threat.status}
+                    {threat.alerta_status}
                   </span>
                 </div>
               </div>

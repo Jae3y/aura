@@ -2,10 +2,13 @@
   "name": "AURA - Autonomous Utility & Response Assistant",
   "short_name": "AURA",
   "description": "Military-grade IoT security system with blockchain verification",
-  "start_url": "/",
+  "id": "/?source=pwa",
+  "start_url": "/dashboard?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
   "background_color": "#000000",
-  "theme_color": "#10b981",
+  "theme_color": "#06B6D4",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -16,12 +19,28 @@
     }
   ],
   "categories": ["security", "utilities", "productivity"],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "shortcuts": [
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
       "description": "View real-time system status",
       "url": "/dashboard",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Alerta",
+      "short_name": "Alerta",
+      "description": "Open high-priority alert management",
+      "url": "/alerta",
       "icons": [{ "src": "/icon.svg", "sizes": "any" }]
     },
     {

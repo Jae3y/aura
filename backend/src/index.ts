@@ -85,12 +85,17 @@ import { connectMQTT } from './services/mqtt';
 import { startSolanaQueue } from './blockchain/solanaQueue';
 
 initSocket(server);
-startSolanaQueue();
-connectMQTT().catch((err) => {
-  Sentry.captureException(err);
+if (config.MOCK_INTEGRATIONS) {
   // eslint-disable-next-line no-console
-  console.error('MQTT initial connection failed:', err);
-});
+  console.log('Mock integrations enabled; MQTT and Solana workers are disabled.');
+} else {
+  startSolanaQueue();
+  connectMQTT().catch((err) => {
+    Sentry.captureException(err);
+    // eslint-disable-next-line no-console
+    console.error('MQTT initial connection failed:', err);
+  });
+}
 
 server.listen(config.PORT, () => {
   // eslint-disable-next-line no-console

@@ -3,6 +3,8 @@ import * as Sentry from '@sentry/nextjs';
 import { apiClient } from '../api/client';
 import { toast } from '../toast';
 import type { Zone } from '../types/database';
+import { mockZones } from '../mock-data';
+import { config } from '../config';
 
 export const zoneKeys = {
   all: ['zones'] as const,
@@ -13,10 +15,18 @@ export function useZones(deviceId: string | null): UseQueryResult<Zone[], Error>
   return useQuery<Zone[]>({
     queryKey: zoneKeys.byDevice(deviceId),
     queryFn: async () => {
-      const data = await apiClient.get<{ zones: Zone[] }>(`/devices/${deviceId}/zones`);
-      return data.zones;
+      if (config.features.mockData) {
+        return mockZones.filter((zone) => zone.device_id === deviceId) as unknown as Zone[];
+      }
+      try {
+        const data = await apiClient.get<{ zones: Zone[] }>(`/devices/${deviceId}/zones`);
+        return data.zones;
+      } catch (error) {
+        console.log('Using mock zone data');
+        return mockZones.filter((zone) => zone.device_id === deviceId) as unknown as Zone[];
+      }
     },
-    enabled: Boolean(deviceId),
+    enabled: Boolean(deviceId) || config.features.mockData,
   });
 }
 

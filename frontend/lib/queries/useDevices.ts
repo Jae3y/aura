@@ -4,6 +4,7 @@ import { toast } from '../toast';
 import * as Sentry from '@sentry/nextjs';
 import type { Database } from '../types/database';
 import { mockDevices } from '../mock-data';
+import { config } from '../config';
 
 type Device = Database['public']['Tables']['devices']['Row'];
 type DeviceInsert = Database['public']['Tables']['devices']['Insert'];
@@ -19,7 +20,7 @@ export const deviceKeys = {
 };
 
 // Get all devices for current user
-export function useDevices(useMockData = false) {
+export function useDevices(useMockData = config.features.mockData) {
   return useQuery({
     queryKey: deviceKeys.lists(),
     queryFn: async (): Promise<Device[]> => {

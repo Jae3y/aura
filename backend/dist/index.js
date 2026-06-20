@@ -111,12 +111,18 @@ const socket_1 = require("./socket");
 const mqtt_1 = require("./services/mqtt");
 const solanaQueue_1 = require("./blockchain/solanaQueue");
 (0, socket_1.initSocket)(server);
-(0, solanaQueue_1.startSolanaQueue)();
-(0, mqtt_1.connectMQTT)().catch((err) => {
-    Sentry.captureException(err);
+if (config_1.config.MOCK_INTEGRATIONS) {
     // eslint-disable-next-line no-console
-    console.error('MQTT initial connection failed:', err);
-});
+    console.log('Mock integrations enabled; MQTT and Solana workers are disabled.');
+}
+else {
+    (0, solanaQueue_1.startSolanaQueue)();
+    (0, mqtt_1.connectMQTT)().catch((err) => {
+        Sentry.captureException(err);
+        // eslint-disable-next-line no-console
+        console.error('MQTT initial connection failed:', err);
+    });
+}
 server.listen(config_1.config.PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`🛡️  AURA backend listening on :${config_1.config.PORT}`);

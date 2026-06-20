@@ -106,7 +106,7 @@ class APIClient {
     return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
-  post<T>(endpoint: string, data?: any, options?: RequestOptions): Promise<T> {
+  post<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
@@ -114,7 +114,7 @@ class APIClient {
     });
   }
 
-  patch<T>(endpoint: string, data?: any, options?: RequestOptions): Promise<T> {
+  patch<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',

@@ -2,6 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 import type { SensorReading } from '../types/database';
 import { mockSensorReadings } from '../mock-data';
+import { config } from '../config';
 
 export const readingKeys = {
   all: ['sensor-readings'] as const,
@@ -9,7 +10,7 @@ export const readingKeys = {
   latest: (deviceId: string | null) => [...readingKeys.byDevice(deviceId), 'latest'] as const,
 };
 
-export function useSensorReadings(deviceId: string | null, limit = 50, useMockData = false): UseQueryResult<SensorReading[], Error> {
+export function useSensorReadings(deviceId: string | null, limit = 50, useMockData = config.features.mockData): UseQueryResult<SensorReading[], Error> {
   return useQuery<SensorReading[]>({
     queryKey: [...readingKeys.byDevice(deviceId), limit],
     queryFn: async () => {
@@ -30,7 +31,7 @@ export function useSensorReadings(deviceId: string | null, limit = 50, useMockDa
   });
 }
 
-export function useLatestSensorReading(deviceId: string | null, useMockData = false): UseQueryResult<SensorReading | null, Error> {
+export function useLatestSensorReading(deviceId: string | null, useMockData = config.features.mockData): UseQueryResult<SensorReading | null, Error> {
   return useQuery<SensorReading | null>({
     queryKey: readingKeys.latest(deviceId),
     queryFn: async () => {

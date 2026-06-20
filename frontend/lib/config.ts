@@ -15,6 +15,9 @@ export const config = {
   sentry: {
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || '',
   },
+  features: {
+    mockData: process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true',
+  },
 } as const;
 
 // Validate required environment variables

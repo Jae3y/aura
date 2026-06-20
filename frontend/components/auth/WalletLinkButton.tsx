@@ -8,9 +8,10 @@ import { authAPI } from "@/lib/api/auth";
 import { toast } from "@/lib/toast";
 
 export function WalletLinkButton() {
-  const { accessToken, profile, setProfile } = useAuthStore();
+  const { session, profile, setProfile } = useAuthStore();
   const { publicKey, connect, disconnect, connected } = useWallet();
   const [isLoading, setIsLoading] = useState(false);
+  const accessToken = session?.access_token;
 
   const handleLinkWallet = async () => {
     if (!accessToken) return;

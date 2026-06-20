@@ -3,7 +3,7 @@ import { getSocketClient } from '../socketClient';
 import { useRealtimeStore } from '../stores/realtimeStore';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../toast';
-import type { Database } from '../types/database';
+import type { AlertaStatus, Database } from '../types/database';
 
 type Device = Database['public']['Tables']['devices']['Row'];
 type SensorReading = Database['public']['Tables']['sensor_readings']['Row'];
@@ -103,7 +103,7 @@ export function useRealtimeSync() {
       // Alerta update handler
       const handleAlertaUpdate = (data: {
         threatId: string;
-        alertaStatus: string;
+        alertaStatus: AlertaStatus;
       }) => {
         updateAlertaStatus(data.threatId, data.alertaStatus);
       };

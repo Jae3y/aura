@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Cpu, Fingerprint, ArrowRight, ChevronDown } from "lucide-react";
 import { WalletGuard } from '@/components/auth/WalletGuard';
@@ -22,16 +22,11 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [selectedMethod, setSelectedMethod] = useState<AuthMethod | null>(null);
   const [initializing, setInitializing] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
 
-  // Prevent SSR/client mismatch — only render dynamic content after mount
-  useEffect(() => { setMounted(true); }, []);
-
   useGSAP(
     () => {
-      if (!mounted) return;
       // GSAP timeline for boot-up sequence
       const tl = gsap.timeline({ delay: 0.2 });
       tl.from(".gsap-boot-line", {
@@ -42,7 +37,7 @@ export default function OnboardingPage() {
         ease: "power2.out",
       });
     },
-    { scope: containerRef, dependencies: [mounted] }
+    { scope: containerRef }
   );
 
   const handleNext = async () => {

@@ -1,11 +1,45 @@
-import 'dotenv/config';
+import path from 'node:path';
+import dotenv from 'dotenv';
 import { z } from 'zod';
+
+dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
+dotenv.config({ override: true });
+
+const rawEnv: Record<string, string | undefined> = { ...process.env };
+const isProduction = rawEnv.NODE_ENV === 'production';
+const devFallbacks: Record<string, string> = {
+  PORT: '3001',
+  SUPABASE_URL: 'http://localhost:54321',
+  SUPABASE_SERVICE_KEY: 'dev-service-key',
+  SUPABASE_ANON_KEY: 'dev-anon-key',
+  HIVEMQ_URL: 'mqtt://localhost:1883',
+  HIVEMQ_USER: 'dev-mqtt-user',
+  HIVEMQ_PASS: 'dev-mqtt-pass',
+  SOLANA_KEYPAIR: 'dev-solana-keypair',
+  ALERTA_API_KEY: 'dev-alerta-key',
+  ALERTA_API_SECRET: 'dev-alerta-secret',
+  ALERTA_CHANNEL_REF: 'dev-alerta-channel',
+  FCM_PROJECT_ID: 'dev-fcm-project',
+  RESEND_API_KEY: 'dev-resend-key',
+  JWT_SECRET: 'dev-jwt-secret',
+  MOCK_INTEGRATIONS: 'true',
+};
+
+if (!isProduction) {
+  for (const [key, value] of Object.entries(devFallbacks)) {
+    rawEnv[key] ||= value;
+  }
+}
 
 // All backend environment variables are validated at boot. A missing or
 // malformed value crashes the process immediately rather than failing later.
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().default(4000),
+  PORT: z.coerce.number().default(3001),
+  MOCK_INTEGRATIONS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_KEY: z.string().min(1),
@@ -39,7 +73,7 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
 });
 
-const parsed = envSchema.safeParse(process.env);
+const parsed = envSchema.safeParse(rawEnv);
 
 if (!parsed.success) {
   // eslint-disable-next-line no-console

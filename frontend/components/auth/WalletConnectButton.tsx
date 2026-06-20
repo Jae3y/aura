@@ -9,12 +9,13 @@ import { authAPI } from '@/lib/api/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { toast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
+import type { PublicKey } from '@solana/web3.js';
 
 const CHALLENGE_MESSAGE = 'Sign this message to authenticate with AURA';
 
 export function WalletConnectButton() {
   const wallet = useWallet();
-  const { publicKey, signMessage, connect, disconnect, connected, connecting, select, wallets, wallet: adapter } = wallet;
+  const { publicKey, signMessage, connect, disconnect, connected, connecting, select, wallets } = wallet;
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const router = useRouter();
   const { setSession, setProfile } = useAuthStore();
@@ -42,7 +43,10 @@ export function WalletConnectButton() {
         await connect();
 
         // Poll the adapter until publicKey is populated (up to 3 seconds)
-        const adapterInstance = phantomWallet.adapter as any;
+        const adapterInstance = phantomWallet.adapter as {
+          publicKey?: PublicKey | null;
+          signMessage?: (message: Uint8Array) => Promise<Uint8Array>;
+        };
         const deadline = Date.now() + 3000;
         while (Date.now() < deadline) {
           if (adapterInstance?.publicKey && adapterInstance?.signMessage) {
@@ -55,7 +59,13 @@ export function WalletConnectButton() {
 
         // Last resort: read from Phantom's injected window.solana object
         if (!walletPublicKey) {
-          const phantom = (window as any)?.solana;
+          const phantom = (window as Window & {
+            solana?: {
+              isPhantom?: boolean;
+              publicKey?: PublicKey;
+              signMessage?: (message: Uint8Array) => Promise<Uint8Array>;
+            };
+          }).solana;
           if (phantom?.isPhantom && phantom?.publicKey && phantom?.signMessage) {
             walletPublicKey = phantom.publicKey;
             walletSignMessage = phantom.signMessage.bind(phantom);

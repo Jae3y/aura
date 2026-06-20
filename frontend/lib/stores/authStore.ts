@@ -17,6 +17,7 @@ interface AuthState {
   session: Session | null;
   profile: Profile | null;
   isAuthenticated: boolean;
+  hasProfile: boolean;
   
   // Actions
   setSession: (session: Session) => void;
@@ -32,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
       session: null,
       profile: null,
       isAuthenticated: false,
+      hasProfile: false,
 
       setSession: (session) =>
         set({
@@ -41,7 +43,7 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       setProfile: (profile) =>
-        set({ profile }),
+        set({ profile, hasProfile: Boolean(profile.id) }),
 
       clearSession: () =>
         set({
@@ -49,11 +51,13 @@ export const useAuthStore = create<AuthState>()(
           session: null,
           profile: null,
           isAuthenticated: false,
+          hasProfile: false,
         }),
 
       updateProfile: (updates) =>
         set((state) => ({
           profile: state.profile ? { ...state.profile, ...updates } : null,
+          hasProfile: Boolean(state.profile?.id),
         })),
     }),
     {
