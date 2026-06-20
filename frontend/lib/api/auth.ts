@@ -141,6 +141,16 @@ class AuthAPI {
       body: JSON.stringify({ fcm_token: fcmToken }),
     });
   }
+
+  async updateProfile(token: string, updates: Partial<Profile>): Promise<Profile> {
+    return this.request<{ profile: Profile }>('/auth/profile', {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updates),
+    }).then(res => res.profile);
+  }
 }
 
 export const authAPI = new AuthAPI();

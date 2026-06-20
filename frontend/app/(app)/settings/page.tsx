@@ -8,6 +8,7 @@ import { pageTransitionVariants } from "@/lib/animations";
 import { useDevices } from '@/lib/queries/useDevices';
 import { apiClient } from '@/lib/api/client';
 import { toast } from '@/lib/toast';
+import { WalletLinkButton } from "@/components/auth/WalletLinkButton";
 
 export default function SettingsPage() {
   const [sensitivity, setSensitivity] = useState(72);
@@ -137,6 +138,10 @@ export default function SettingsPage() {
           </div>
           <RelayToggle active={criticalAlerts} onChange={setCriticalAlerts} />
         </div>
+
+        <div className="h-px w-full bg-zinc-800" />
+
+        <WalletLinkButton />
       </section>
 
       {/* Solana Network */}

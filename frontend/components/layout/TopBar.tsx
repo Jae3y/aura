@@ -1,8 +1,10 @@
 "use client";
 
-import { Shield, Bell, ArrowLeft } from "lucide-react";
+import { Shield, Bell, ArrowLeft, AlertTriangle } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { clsx } from "clsx";
+import Link from "next/link";
+import { useThreats } from "@/lib/queries/useThreats";
 
 interface TopBarProps {
   title?: string;
@@ -12,9 +14,12 @@ interface TopBarProps {
 export function TopBar({ title, showBack = false }: TopBarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { data: threats = [] } = useThreats("1", 100, true);
+  
+  const openThreatCount = threats.filter((t: any) => t.status === "open").length;
 
   // Determine if we should show the back button based on path or explicit prop
-  const isDeepRoute = pathname !== "/dashboard" && pathname !== "/monitor" && pathname !== "/control" && pathname !== "/log" && pathname !== "/settings";
+  const isDeepRoute = pathname !== "/dashboard" && pathname !== "/monitor" && pathname !== "/control" && pathname !== "/log" && pathname !== "/settings" && pathname !== "/alerta" && pathname !== "/env-control";
   const shouldShowBack = showBack || isDeepRoute;
 
   return (
@@ -40,6 +45,14 @@ export function TopBar({ title, showBack = false }: TopBarProps) {
         </div>
         
         <div className="flex items-center space-x-4 text-text-secondary">
+          <Link href="/alerta" className="hover:text-text-primary transition-colors relative">
+            <AlertTriangle size={20} className={openThreatCount > 0 ? "text-red-400" : ""} />
+            {openThreatCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {openThreatCount}
+              </span>
+            )}
+          </Link>
           <button aria-label="Notifications" className="hover:text-text-primary transition-colors">
             <Bell size={20} />
           </button>

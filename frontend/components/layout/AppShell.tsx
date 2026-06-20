@@ -14,7 +14,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const getRouteTitle = () => {
     if (pathname?.startsWith("/dashboard")) return "";
     if (pathname?.startsWith("/monitor")) return "Threat Monitor";
-    if (pathname?.startsWith("/control")) return "Env Control";
+    if (pathname?.startsWith("/control")) return "Device Control";
+    if (pathname?.startsWith("/env-control")) return "Env Control";
+    if (pathname?.startsWith("/alerta")) return "Alerta";
     if (pathname?.startsWith("/log")) return "Event Log";
     if (pathname?.startsWith("/settings")) return "Settings";
     if (pathname?.startsWith("/detection")) return "Spatial View";
