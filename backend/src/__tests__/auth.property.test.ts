@@ -7,13 +7,13 @@
  * Validates: Property 1 (auth boundary) and Property 2 (Sentry context)
  * Requirements: 1.4, 1.5, 1.6
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fc from 'fast-check';
-import express, { Router } from 'express';
-import request from 'supertest';
+import express, { Router, type Express } from 'express';
+import http from 'node:http';
 
 // ---------------------------------------------------------------------------
-// Module mocks — must be declared before any imports that use these modules.
+// Module mocks — declared before any imports that use these modules.
 // ---------------------------------------------------------------------------
 
 // Mock Sentry so we can inspect setUser calls without a real DSN.
@@ -23,7 +23,16 @@ vi.mock('@sentry/node', () => ({
   setUser: mockSetUser,
   captureException: mockCaptureException,
   init: vi.fn(),
-  Handlers: { requestHandler: () => (_req: unknown, _res: unknown, next: () => void) => next(), errorHandler: () => (_err: unknown, _req: unknown, _res: unknown, next: () => void) => next() },
+  Handlers: {
+    requestHandler:
+      () =>
+      (_req: unknown, _res: unknown, next: () => void) =>
+        next(),
+    errorHandler:
+      () =>
+      (_err: unknown, _req: unknown, _res: unknown, next: () => void) =>
+        next(),
+  },
 }));
 
 // Mock Supabase anon client (used by auth middleware for JWT verification).
@@ -32,9 +41,13 @@ vi.mock('../lib/supabase', () => ({
   supabaseAnon: { auth: { getUser: mockGetUser } },
   supabaseAdmin: {
     from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+      select: () => ({
+        eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+      }),
       update: () => ({ eq: () => ({ data: null, error: null }) }),
-      upsert: () => ({ select: () => ({ single: async () => ({ data: null, error: null }) }) }),
+      upsert: () => ({
+        select: () => ({ single: async () => ({ data: null, error: null }) }),
+      }),
     }),
     auth: { admin: { signOut: vi.fn() } },
   },
@@ -81,19 +94,91 @@ import { authMiddleware } from '../middleware/auth';
 import type { Profile } from '../types/database';
 
 // ---------------------------------------------------------------------------
-// Test helpers
+// Lightweight HTTP test client (no supertest dependency)
+// ---------------------------------------------------------------------------
+
+interface TestResponse {
+  status: number;
+  body: Record<string, unknown>;
+  rawBody: string;
+}
+
+/**
+ * Make an HTTP request against a running http.Server.
+ * Returns status code and parsed JSON body.
+ */
+function httpRequest(
+  server: http.Server,
+  method: string,
+  path: string,
+  headers: Record<string, string> = {},
+  body?: string
+): Promise<TestResponse> {
+  return new Promise((resolve, reject) => {
+    const addr = server.address() as { port: number };
+    const options: http.RequestOptions = {
+      hostname: '127.0.0.1',
+      port: addr.port,
+      path,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+    };
+
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        let parsed: Record<string, unknown> = {};
+        try {
+          parsed = JSON.parse(data);
+        } catch {
+          // not JSON — leave as empty object
+        }
+        resolve({ status: res.statusCode ?? 0, body: parsed, rawBody: data });
+      });
+    });
+
+    req.on('error', reject);
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
+/**
+ * Start the Express app on an ephemeral port and return the server.
+ * Call server.close() in afterEach / afterAll.
+ */
+function startServer(app: Express): Promise<http.Server> {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer(app);
+    server.listen(0, '127.0.0.1', () => resolve(server));
+    server.on('error', reject);
+  });
+}
+
+/** Close a server and wait for all connections to drain. */
+function closeServer(server: http.Server): Promise<void> {
+  return new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+}
+
+// ---------------------------------------------------------------------------
+// Test app factory
 // ---------------------------------------------------------------------------
 
 /**
- * Build a minimal Express app that protects a single GET /protected route
+ * Build a minimal Express app that protects a /protected route
  * with the authMiddleware under test.
  */
-function buildApp() {
+function buildApp(): Express {
   const app = express();
   app.use(express.json());
 
   const protectedRouter = Router();
   protectedRouter.use(authMiddleware);
+
   protectedRouter.get('/protected', (_req, res) => {
     res.json({ secret: 'data' });
   });
@@ -111,10 +196,14 @@ function buildApp() {
   return app;
 }
 
-// Solana-style base58 address alphabet (no 0, O, I, l).
+// ---------------------------------------------------------------------------
+// Arbitraries
+// ---------------------------------------------------------------------------
+
+// Solana base58 alphabet (excludes 0, O, I, l)
 const BASE58_CHARS = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
-/** Generates strings that look like valid Solana wallet addresses (32-44 chars base58). */
+/** Arbitrary Solana-style wallet address (32–44 base58 characters). */
 const walletAddressArb = fc
   .array(fc.integer({ min: 0, max: BASE58_CHARS.length - 1 }), {
     minLength: 32,
@@ -122,7 +211,7 @@ const walletAddressArb = fc
   })
   .map((indices) => indices.map((i) => BASE58_CHARS[i]).join(''));
 
-/** Generates UUID v4 strings for user IDs. */
+/** Arbitrary UUID string. */
 const uuidArb = fc
   .tuple(
     fc.hexaString({ minLength: 8, maxLength: 8 }),
@@ -138,58 +227,48 @@ const uuidArb = fc
 // ===========================================================================
 
 describe('Property 1: Unauthenticated requests always return HTTP 401', () => {
-  const app = buildApp();
+  let server: http.Server;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    // Default: no valid user
+    // Default: Supabase rejects all tokens
     mockGetUser.mockResolvedValue({ data: { user: null }, error: new Error('no auth') });
     mockGetProfileById.mockResolvedValue(null);
+    server = await startServer(buildApp());
   });
 
+  // We close in afterEach via an async callback — vitest supports this.
+  // Using a local variable keeps test isolation clean.
   it('returns 401 when no Authorization header is present — all HTTP methods', async () => {
     await fc.assert(
       fc.asyncProperty(
-        // Arbitrary HTTP method
         fc.constantFrom('GET', 'POST', 'PATCH', 'DELETE'),
         async (method) => {
-          const agent = request(app);
-          const req =
-            method === 'GET' ? agent.get('/protected') :
-            method === 'POST' ? agent.post('/protected') :
-            method === 'PATCH' ? agent.patch('/protected') :
-            agent.delete('/protected');
-
-          // No Authorization header at all.
-          const res = await req.send({});
-
+          const res = await httpRequest(server, method, '/protected');
           expect(res.status).toBe(401);
-          // Must return structured JSON error, never a data payload.
           expect(res.body).toHaveProperty('error');
           expect(res.body).not.toHaveProperty('secret');
         }
       ),
       { numRuns: 20 }
     );
+    await closeServer(server);
   });
 
   it('returns 401 for arbitrary malformed Authorization header values', async () => {
     await fc.assert(
       fc.asyncProperty(
-        // Arbitrary string that is NOT a valid "Bearer <jwt>" token
         fc.oneof(
-          fc.constant(''),                          // empty
-          fc.constant('Basic dXNlcjpwYXNz'),        // Basic auth scheme
-          fc.constant('Bearer '),                    // Bearer with no token
-          fc.constant('bearer eyJhbGciOiJIUzI1NiJ9'), // lower-case scheme
-          fc.string({ minLength: 1, maxLength: 64 }) // random garbage
+          fc.constant(''),                               // empty string
+          fc.constant('Basic dXNlcjpwYXNz'),            // Basic auth scheme
+          fc.constant('Bearer '),                        // Bearer with no token
+          fc.constant('bearer eyJhbGciOiJIUzI1NiJ9'),   // lower-case scheme
+          fc.string({ minLength: 1, maxLength: 64 })    // random garbage
         ),
         async (authHeader) => {
-          const res = await request(app)
-            .get('/protected')
-            .set('Authorization', authHeader)
-            .send();
-
+          const res = await httpRequest(server, 'GET', '/protected', {
+            Authorization: authHeader,
+          });
           expect(res.status).toBe(401);
           expect(res.body).toHaveProperty('error');
           expect(res.body).not.toHaveProperty('secret');
@@ -197,25 +276,21 @@ describe('Property 1: Unauthenticated requests always return HTTP 401', () => {
       ),
       { numRuns: 50 }
     );
+    await closeServer(server);
   });
 
   it('returns 401 when Supabase JWT verification fails', async () => {
     await fc.assert(
       fc.asyncProperty(
-        // Arbitrary token strings
         fc.string({ minLength: 10, maxLength: 200 }),
         async (fakeToken) => {
-          // Supabase rejects the token
           mockGetUser.mockResolvedValue({
             data: { user: null },
             error: new Error('JWT is invalid'),
           });
-
-          const res = await request(app)
-            .get('/protected')
-            .set('Authorization', `Bearer ${fakeToken}`)
-            .send();
-
+          const res = await httpRequest(server, 'GET', '/protected', {
+            Authorization: `Bearer ${fakeToken}`,
+          });
           expect(res.status).toBe(401);
           expect(res.body).toHaveProperty('error');
           expect(res.body).not.toHaveProperty('secret');
@@ -223,48 +298,42 @@ describe('Property 1: Unauthenticated requests always return HTTP 401', () => {
       ),
       { numRuns: 30 }
     );
+    await closeServer(server);
   });
 
   it('returns 401 when JWT is valid but profile does not exist', async () => {
     await fc.assert(
-      fc.asyncProperty(
-        uuidArb,
-        walletAddressArb,
-        async (userId, _wallet) => {
-          // Supabase says JWT is valid
-          mockGetUser.mockResolvedValue({
-            data: { user: { id: userId, email: `${userId}@wallet.aura` } },
-            error: null,
-          });
-          // But the profile row is missing
-          mockGetProfileById.mockResolvedValue(null);
+      fc.asyncProperty(uuidArb, walletAddressArb, async (userId, _wallet) => {
+        mockGetUser.mockResolvedValue({
+          data: { user: { id: userId, email: `${userId}@wallet.aura` } },
+          error: null,
+        });
+        mockGetProfileById.mockResolvedValue(null);
 
-          const res = await request(app)
-            .get('/protected')
-            .set('Authorization', 'Bearer valid.jwt.token')
-            .send();
-
-          expect(res.status).toBe(401);
-          expect(res.body).toHaveProperty('error');
-          expect(res.body).not.toHaveProperty('secret');
-        }
-      ),
+        const res = await httpRequest(server, 'GET', '/protected', {
+          Authorization: 'Bearer valid.jwt.token',
+        });
+        expect(res.status).toBe(401);
+        expect(res.body).toHaveProperty('error');
+        expect(res.body).not.toHaveProperty('secret');
+      }),
       { numRuns: 20 }
     );
+    await closeServer(server);
   });
 
   it('never leaks JWT internals in 401 responses', async () => {
-    const res = await request(app)
-      .get('/protected')
-      .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc')
-      .send();
-
+    const res = await httpRequest(server, 'GET', '/protected', {
+      Authorization:
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc',
+    });
     expect(res.status).toBe(401);
-    const body = JSON.stringify(res.body);
-    // Must not reveal token structure details
-    expect(body).not.toMatch(/eyJ/);
-    expect(body).not.toMatch(/signature/);
-    expect(body).not.toMatch(/secret/i);
+    // Must not echo back any token segment or internal details
+    expect(res.rawBody).not.toMatch(/eyJ/);
+    expect(res.rawBody).not.toMatch(/signature/);
+    // The word "secret" must not appear in the response body
+    expect(res.rawBody.toLowerCase()).not.toMatch(/\bsecret\b/);
+    await closeServer(server);
   });
 });
 
@@ -273,10 +342,11 @@ describe('Property 1: Unauthenticated requests always return HTTP 401', () => {
 // ===========================================================================
 
 describe('Property 2: Sentry user context set on authenticated requests', () => {
-  const app = buildApp();
+  let server: http.Server;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    server = await startServer(buildApp());
   });
 
   it('calls Sentry.setUser with the walletAddress for any authenticated request', async () => {
@@ -308,32 +378,24 @@ describe('Property 2: Sentry user context set on authenticated requests', () => 
           mockGetProfileById.mockResolvedValue(profile);
           mockSetUser.mockClear();
 
-          const agent = request(app);
-          const req =
-            method === 'GET' ? agent.get('/protected') :
-            method === 'POST' ? agent.post('/protected') :
-            method === 'PATCH' ? agent.patch('/protected') :
-            agent.delete('/protected');
+          const res = await httpRequest(server, method, '/protected', {
+            Authorization: 'Bearer valid.jwt.token',
+          });
 
-          const res = await req
-            .set('Authorization', 'Bearer valid.jwt.token')
-            .send({});
-
-          // Request must succeed (the route returns 200)
+          // Request must succeed
           expect(res.status).toBe(200);
 
-          // Sentry.setUser must have been called exactly once
+          // Sentry.setUser must have been called exactly once per request
           expect(mockSetUser).toHaveBeenCalledTimes(1);
 
-          // Must include the wallet address as the username
+          // Must set the correct wallet address as username
           const [sentryUser] = mockSetUser.mock.calls[0];
-          expect(sentryUser).toMatchObject({
-            username: walletAddress,
-          });
+          expect(sentryUser).toMatchObject({ username: walletAddress });
         }
       ),
       { numRuns: 25 }
     );
+    await closeServer(server);
   });
 
   it('sets Sentry user context with the correct walletAddress (not a different user)', async () => {
@@ -342,7 +404,7 @@ describe('Property 2: Sentry user context set on authenticated requests', () => 
         fc.tuple(uuidArb, walletAddressArb),
         fc.tuple(uuidArb, walletAddressArb),
         async ([userId1, wallet1], [userId2, wallet2]) => {
-          // Make the two users distinct
+          // Precondition: the two users must be distinct
           fc.pre(userId1 !== userId2 && wallet1 !== wallet2);
 
           const makeProfile = (id: string, wallet: string): Profile => ({
@@ -361,39 +423,31 @@ describe('Property 2: Sentry user context set on authenticated requests', () => 
           });
 
           // First request — user 1
-          mockGetUser.mockResolvedValue({
-            data: { user: { id: userId1 } },
-            error: null,
-          });
+          mockGetUser.mockResolvedValue({ data: { user: { id: userId1 } }, error: null });
           mockGetProfileById.mockResolvedValue(makeProfile(userId1, wallet1));
           mockSetUser.mockClear();
 
-          await request(app)
-            .get('/protected')
-            .set('Authorization', 'Bearer token.for.user1')
-            .send();
+          await httpRequest(server, 'GET', '/protected', {
+            Authorization: 'Bearer token.for.user1',
+          });
 
           expect(mockSetUser).toHaveBeenCalledWith(
             expect.objectContaining({ username: wallet1 })
           );
 
-          // Second request — user 2 (different wallet)
-          mockGetUser.mockResolvedValue({
-            data: { user: { id: userId2 } },
-            error: null,
-          });
+          // Second request — user 2
+          mockGetUser.mockResolvedValue({ data: { user: { id: userId2 } }, error: null });
           mockGetProfileById.mockResolvedValue(makeProfile(userId2, wallet2));
           mockSetUser.mockClear();
 
-          await request(app)
-            .get('/protected')
-            .set('Authorization', 'Bearer token.for.user2')
-            .send();
+          await httpRequest(server, 'GET', '/protected', {
+            Authorization: 'Bearer token.for.user2',
+          });
 
           expect(mockSetUser).toHaveBeenCalledWith(
             expect.objectContaining({ username: wallet2 })
           );
-          // Must NOT have been called with wallet1
+          // Must NOT have been called with user1's wallet
           expect(mockSetUser).not.toHaveBeenCalledWith(
             expect.objectContaining({ username: wallet1 })
           );
@@ -401,36 +455,38 @@ describe('Property 2: Sentry user context set on authenticated requests', () => 
       ),
       { numRuns: 20 }
     );
+    await closeServer(server);
   });
 
   it('does NOT call Sentry.setUser on unauthenticated requests', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.oneof(
-          fc.constant(undefined),                     // no header
-          fc.string({ minLength: 1, maxLength: 50 }) // garbage header value
+          fc.constant(null),                              // no header
+          fc.string({ minLength: 1, maxLength: 50 })    // garbage header value
         ),
         async (authValue) => {
-          mockGetUser.mockResolvedValue({ data: { user: null }, error: new Error('not auth') });
+          mockGetUser.mockResolvedValue({
+            data: { user: null },
+            error: new Error('not auth'),
+          });
           mockSetUser.mockClear();
 
-          const req = request(app).get('/protected');
-          if (authValue !== undefined) {
-            req.set('Authorization', authValue);
-          }
-
-          const res = await req.send();
+          const headers: Record<string, string> =
+            authValue !== null ? { Authorization: authValue } : {};
+          const res = await httpRequest(server, 'GET', '/protected', headers);
 
           expect(res.status).toBe(401);
-          // Sentry.setUser must NOT be called when auth fails
+          // Sentry.setUser must NOT be called when authentication fails
           expect(mockSetUser).not.toHaveBeenCalled();
         }
       ),
       { numRuns: 25 }
     );
+    await closeServer(server);
   });
 
-  it('attaches userId to Sentry context alongside walletAddress', async () => {
+  it('attaches both userId and walletAddress to Sentry context', async () => {
     const userId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
     const walletAddress = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
 
@@ -449,16 +505,12 @@ describe('Property 2: Sentry user context set on authenticated requests', () => 
       updated_at: new Date().toISOString(),
     };
 
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: userId } },
-      error: null,
-    });
+    mockGetUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
     mockGetProfileById.mockResolvedValue(profile);
 
-    await request(app)
-      .get('/protected')
-      .set('Authorization', 'Bearer valid.jwt.token')
-      .send();
+    await httpRequest(server, 'GET', '/protected', {
+      Authorization: 'Bearer valid.jwt.token',
+    });
 
     expect(mockSetUser).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -466,5 +518,6 @@ describe('Property 2: Sentry user context set on authenticated requests', () => 
         username: walletAddress,
       })
     );
+    await closeServer(server);
   });
 });
