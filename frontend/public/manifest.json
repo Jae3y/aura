@@ -3,7 +3,7 @@
   "short_name": "AURA",
   "description": "Military-grade IoT security system with blockchain verification",
   "id": "/?source=pwa",
-  "start_url": "/dashboard?source=pwa",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "browser"],

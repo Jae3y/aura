@@ -40,9 +40,12 @@ app.use(
 app.use(express.json({ limit: '2mb' }));
 app.use(defaultLimiter);
 
-app.get('/health', (_req, res) => {
+const healthHandler = (_req: express.Request, res: express.Response) => {
   res.json({ status: 'ok', service: 'aura-backend', ts: Date.now() });
-});
+};
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 // ---------------------------------------------------------------------------
 // Routes (mounted as each module is implemented).
@@ -72,6 +75,20 @@ app.use('/', notificationsRouter);
 app.use('/alerta', alertaRouter);
 app.use('/', reportsRouter);
 app.use('/blockchain', blockchainRouter);
+
+// API-prefixed mounts for same-origin proxying from the frontend.
+app.use('/api/auth', authRouter);
+app.use('/api', devicesRouter);
+app.use('/api', controlRouter);
+app.use('/api', zonesRouter);
+app.use('/api', automationsRouter);
+app.use('/api', sensorRouter);
+app.use('/api', threatsRouter);
+app.use('/api', voiceRouter);
+app.use('/api', notificationsRouter);
+app.use('/api/alerta', alertaRouter);
+app.use('/api', reportsRouter);
+app.use('/api/blockchain', blockchainRouter);
 
 app.use(Sentry.Handlers.errorHandler());
 app.use(notFoundHandler);

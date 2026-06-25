@@ -5,7 +5,7 @@ export const config = {
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   },
   backend: {
-    baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001',
+    baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL || '/api',
     socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001',
   },
   solana: {

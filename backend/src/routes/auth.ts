@@ -97,7 +97,8 @@ router.post('/register', async (req, res, next) => {
   try {
     const { walletAddress, signature, message } = loginSchema.parse(req.body);
     const data = await authenticate(walletAddress, signature, message);
-    res.status(201).json({ session: data.session, user: data.user });
+    const profile = await getProfileById(data.user!.id);
+    res.status(201).json({ session: data.session, user: data.user, profile });
   } catch (err) {
     next(err);
   }
@@ -107,7 +108,8 @@ router.post('/login', async (req, res, next) => {
   try {
     const { walletAddress, signature, message } = loginSchema.parse(req.body);
     const data = await authenticate(walletAddress, signature, message);
-    res.json({ session: data.session, user: data.user });
+    const profile = await getProfileById(data.user!.id);
+    res.json({ session: data.session, user: data.user, profile });
   } catch (err) {
     next(err);
   }

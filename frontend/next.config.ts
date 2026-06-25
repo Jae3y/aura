@@ -4,6 +4,12 @@ import withPWA from "@ducanh2912/next-pwa";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
+  async rewrites() {
+    return [
+      { source: '/api/:path*', destination: 'http://localhost:3001/api/:path*' },
+      { source: '/health', destination: 'http://localhost:3001/health' },
+    ];
+  },
 };
 
 export default withPWA({
@@ -12,7 +18,7 @@ export default withPWA({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  disable: process.env.NODE_ENV === "development",
+  disable: false,
   fallbacks: {
     document: "/offline.html",
   },

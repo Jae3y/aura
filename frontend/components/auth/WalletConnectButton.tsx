@@ -1,7 +1,7 @@
 'use client';
 
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as Sentry from '@sentry/nextjs';
 import bs58 from 'bs58';
@@ -9,84 +9,61 @@ import { authAPI } from '@/lib/api/auth';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { toast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
-import type { PublicKey } from '@solana/web3.js';
 
 const CHALLENGE_MESSAGE = 'Sign this message to authenticate with AURA';
 
 export function WalletConnectButton() {
-  const wallet = useWallet();
-  const { publicKey, signMessage, connect, disconnect, connected, connecting, select, wallets } = wallet;
+  const { publicKey, signMessage, connect, disconnect, connected, connecting, select, wallets } = useWallet();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [hasSelectedWallet, setHasSelectedWallet] = useState(false);
   const router = useRouter();
   const { setSession, setProfile } = useAuthStore();
+
+  // Auto-select Phantom wallet on mount
+  useEffect(() => {
+    if (!hasSelectedWallet && wallets.length > 0) {
+      const phantomWallet = wallets.find(w => w.adapter.name === 'Phantom');
+      if (phantomWallet) {
+        select(phantomWallet.adapter.name);
+        setHasSelectedWallet(true);
+      }
+    }
+  }, [wallets, select, hasSelectedWallet]);
 
   const handleConnect = async () => {
     try {
       setIsAuthenticating(true);
 
-      let walletPublicKey = publicKey;
-      let walletSignMessage = signMessage;
-
-      // Select and connect Phantom wallet if not already connected
-      if (!connected || !walletPublicKey || !walletSignMessage) {
-        const phantomWallet = wallets.find(wallet => wallet.adapter.name === 'Phantom');
+      // Ensure Phantom is selected
+      if (!hasSelectedWallet) {
+        const phantomWallet = wallets.find(w => w.adapter.name === 'Phantom');
         if (!phantomWallet) {
           throw new Error('Phantom wallet not found. Please install Phantom wallet extension.');
         }
-        
-        select(phantomWallet.adapter.name);
-        
-        // Wait for selection to register
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Connect to the wallet
-        await connect();
-
-        // Poll the adapter until publicKey is populated (up to 3 seconds)
-        const adapterInstance = phantomWallet.adapter as {
-          publicKey?: PublicKey | null;
-          signMessage?: (message: Uint8Array) => Promise<Uint8Array>;
-        };
-        const deadline = Date.now() + 3000;
-        while (Date.now() < deadline) {
-          if (adapterInstance?.publicKey && adapterInstance?.signMessage) {
-            walletPublicKey = adapterInstance.publicKey;
-            walletSignMessage = adapterInstance.signMessage.bind(adapterInstance);
-            break;
-          }
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
-        // Last resort: read from Phantom's injected window.solana object
-        if (!walletPublicKey) {
-          const phantom = (window as Window & {
-            solana?: {
-              isPhantom?: boolean;
-              publicKey?: PublicKey;
-              signMessage?: (message: Uint8Array) => Promise<Uint8Array>;
-            };
-          }).solana;
-          if (phantom?.isPhantom && phantom?.publicKey && phantom?.signMessage) {
-            walletPublicKey = phantom.publicKey;
-            walletSignMessage = phantom.signMessage.bind(phantom);
-          }
-        }
-
-        if (!walletPublicKey || !walletSignMessage) {
-          throw new Error('Wallet connection succeeded but public key is not available. Please try again.');
-        }
+        await select(phantomWallet.adapter.name);
+        setHasSelectedWallet(true);
+        // Give selection time to register
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
 
-      if (!walletPublicKey || !walletSignMessage) {
+      // Connect if not already connected
+      if (!connected) {
+        await connect();
+        // Wait for connection to establish
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Ensure we have publicKey and signMessage
+      if (!publicKey || !signMessage) {
         throw new Error('Wallet not properly connected. Please ensure Phantom is unlocked and try again.');
       }
 
       // Sign challenge message
       const message = new TextEncoder().encode(CHALLENGE_MESSAGE);
-      const signature = await walletSignMessage(message);
+      const signature = await signMessage(message);
 
       const signatureBase58 = bs58.encode(signature);
-      const walletAddress = walletPublicKey.toBase58();
+      const walletAddress = publicKey.toBase58();
 
       // Authenticate with backend
       const response = await authAPI.login({
@@ -147,12 +124,16 @@ export function WalletConnectButton() {
         if (error.message.includes('User rejected')) {
           toast.warning('Signature request was rejected');
         } else {
-          toast.error('Failed to authenticate wallet');
+          toast.error(error.message || 'Failed to authenticate wallet');
         }
       }
 
       // Disconnect wallet on auth failure
-      await disconnect();
+      try {
+        await disconnect();
+      } catch (e) {
+        // Ignore disconnect errors
+      }
     } finally {
       setIsAuthenticating(false);
     }
