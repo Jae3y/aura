@@ -27,3 +27,6 @@ backend/reload.js
 .env
 backend/.env
 frontend/.env.local
+
+# Chrome debug profile data
+chrome-debug/
