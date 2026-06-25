@@ -11,6 +11,18 @@ export async function getProfileById(id: string): Promise<Profile | null> {
   return data;
 }
 
+export async function getProfileByWalletAddress(
+  walletAddress: string
+): Promise<Profile | null> {
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('wallet_address', walletAddress)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function upsertProfile(
   profile: Partial<Profile>
 ): Promise<Profile> {

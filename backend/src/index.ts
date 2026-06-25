@@ -64,6 +64,11 @@ import reportsRouter from './routes/reports';
 import blockchainRouter from './routes/blockchain';
 
 app.use('/auth', authRouter);
+// API-prefixed public routes must be mounted before catch-all "/" routers,
+// otherwise protected routers like devicesRouter intercept /api/auth/* first.
+app.use('/api/auth', authRouter);
+app.use('/api/alerta', alertaRouter);
+app.use('/api/blockchain', blockchainRouter);
 app.use('/', devicesRouter);
 app.use('/', controlRouter);
 app.use('/', zonesRouter);
@@ -75,9 +80,6 @@ app.use('/', notificationsRouter);
 app.use('/alerta', alertaRouter);
 app.use('/', reportsRouter);
 app.use('/blockchain', blockchainRouter);
-
-// API-prefixed mounts for same-origin proxying from the frontend.
-app.use('/api/auth', authRouter);
 app.use('/api', devicesRouter);
 app.use('/api', controlRouter);
 app.use('/api', zonesRouter);
@@ -86,9 +88,7 @@ app.use('/api', sensorRouter);
 app.use('/api', threatsRouter);
 app.use('/api', voiceRouter);
 app.use('/api', notificationsRouter);
-app.use('/api/alerta', alertaRouter);
 app.use('/api', reportsRouter);
-app.use('/api/blockchain', blockchainRouter);
 
 app.use(Sentry.Handlers.errorHandler());
 app.use(notFoundHandler);

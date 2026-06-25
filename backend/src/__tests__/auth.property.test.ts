@@ -12,13 +12,18 @@ import fc from 'fast-check';
 import express, { Router, type Express } from 'express';
 import http from 'node:http';
 
+const { mockSetUser, mockCaptureException, mockGetUser, mockGetProfileById } = vi.hoisted(() => ({
+  mockSetUser: vi.fn(),
+  mockCaptureException: vi.fn(),
+  mockGetUser: vi.fn(),
+  mockGetProfileById: vi.fn(),
+}));
+
 // ---------------------------------------------------------------------------
 // Module mocks — declared before any imports that use these modules.
 // ---------------------------------------------------------------------------
 
 // Mock Sentry so we can inspect setUser calls without a real DSN.
-const mockSetUser = vi.fn();
-const mockCaptureException = vi.fn();
 vi.mock('@sentry/node', () => ({
   setUser: mockSetUser,
   captureException: mockCaptureException,
@@ -36,7 +41,6 @@ vi.mock('@sentry/node', () => ({
 }));
 
 // Mock Supabase anon client (used by auth middleware for JWT verification).
-const mockGetUser = vi.fn();
 vi.mock('../lib/supabase', () => ({
   supabaseAnon: { auth: { getUser: mockGetUser } },
   supabaseAdmin: {
@@ -54,7 +58,6 @@ vi.mock('../lib/supabase', () => ({
 }));
 
 // Mock the profiles DB helper.
-const mockGetProfileById = vi.fn();
 vi.mock('../lib/db/profiles', () => ({
   getProfileById: mockGetProfileById,
   upsertProfile: vi.fn(),

@@ -6,7 +6,12 @@ import { PublicKey } from '@solana/web3.js';
 import { z } from 'zod';
 import { config } from '../config';
 import { supabaseAdmin, supabaseAnon } from '../lib/supabase';
-import { upsertProfile, updateFcmToken, getProfileById } from '../lib/db/profiles';
+import {
+  upsertProfile,
+  updateFcmToken,
+  getProfileById,
+  getProfileByWalletAddress,
+} from '../lib/db/profiles';
 import { authMiddleware } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimit';
 import { HttpError } from '../middleware/errorHandler';
@@ -79,12 +84,30 @@ async function sessionFor(addr: string) {
   return data;
 }
 
+async function recoverWalletSession(addr: string) {
+  const profile = await getProfileByWalletAddress(addr);
+  if (!profile) throw new HttpError(401, 'Authentication failed');
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(profile.id, {
+    password: walletPassword(addr),
+  });
+  if (error) throw error;
+
+  return sessionFor(addr);
+}
+
 async function authenticate(addr: string, sig: string, msg: string) {
   if (!verifyWalletSignature(addr, sig, msg)) {
     throw new HttpError(401, 'Invalid wallet signature');
   }
   await ensureUser(addr);
-  const data = await sessionFor(addr);
+  let data;
+  try {
+    data = await sessionFor(addr);
+  } catch (error) {
+    if (!(error instanceof HttpError) || error.status !== 401) throw error;
+    data = await recoverWalletSession(addr);
+  }
   await upsertProfile({
     id: data.user!.id,
     email: walletEmail(addr),

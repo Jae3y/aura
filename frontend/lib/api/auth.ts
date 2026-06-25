@@ -71,10 +71,12 @@ class AuthAPI {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: 'Authentication request failed',
-        }));
-        throw new Error(error.message || `HTTP ${response.status}`);
+        const body = await response.json().catch(() => ({}));
+        const message =
+          body?.error?.message ||
+          body?.message ||
+          `HTTP ${response.status}`;
+        throw new Error(message);
       }
 
       return response.json();
