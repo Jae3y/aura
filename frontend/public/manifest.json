@@ -12,14 +12,14 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     },
     {
       "src": "/icon.jpg",
-      "sizes": "512x512",
+      "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "any"
     }
@@ -40,21 +40,21 @@
       "short_name": "Dashboard",
       "description": "View real-time system status",
       "url": "/dashboard",
-      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+      "icons": [{ "src": "/icon.jpg", "sizes": "192x192" }]
     },
     {
       "name": "Alerta",
       "short_name": "Alerta",
       "description": "Open high-priority alert management",
       "url": "/alerta",
-      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+      "icons": [{ "src": "/icon.jpg", "sizes": "192x192" }]
     },
     {
       "name": "Threats",
       "short_name": "Threats",
       "description": "View threat events",
       "url": "/threats",
-      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+      "icons": [{ "src": "/icon.jpg", "sizes": "192x192" }]
     }
   ]
 }

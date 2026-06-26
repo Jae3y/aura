@@ -46,7 +46,7 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased dark" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icon.svg" />
+        <link rel="apple-touch-icon" href="/icon.jpg" />
       </head>
       <body className="min-h-full flex flex-col bg-base text-text-primary font-sans antialiased">
         <ErrorBoundary>
