@@ -47,11 +47,6 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon.jpg" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: "if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js')})}",
-          }}
-        />
       </head>
       <body className="min-h-full flex flex-col bg-base text-text-primary font-sans antialiased">
         <ErrorBoundary>
