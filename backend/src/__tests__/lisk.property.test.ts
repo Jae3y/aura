@@ -378,7 +378,7 @@ describe('Property 10: Monthly report counts match DB records', () => {
           }),
           { minLength: 0, maxLength: 50 }
         ),
-        (events) => {
+        async (events) => {
           // Simulate what computeMonthlyStats would count
           const surgesBlocked = events.filter((e) => e.type === 'surge').length;
           const intrusionsDetected = events.filter((e) => e.type === 'intrusion').length;
@@ -404,7 +404,7 @@ describe('Property 10: Monthly report counts match DB records', () => {
           fc.constantFrom('surge', 'intrusion', 'undervoltage', 'overcurrent', 'frequency_anomaly', 'system_fault'),
           { minLength: 0, maxLength: 100 }
         ),
-        (eventTypes) => {
+        async (eventTypes) => {
           // Simulate the aggregation
           const counts = {
             surge: 0,
@@ -438,7 +438,7 @@ describe('Property 10: Monthly report counts match DB records', () => {
           fc.constantFrom('open', 'ack', 'closed'),
           { minLength: 0, maxLength: 100 }
         ),
-        (statuses) => {
+        async (statuses) => {
           if (statuses.length === 0) {
             // Edge case: no alerts — ack_rate should be 0
             expect(0).toBeGreaterThanOrEqual(0);
@@ -474,7 +474,7 @@ describe('Property 10: Monthly report counts match DB records', () => {
           totalReadings: fc.integer({ min: 1, max: 10000 }),
           uptimeRatio: fc.float({ min: 0, max: 1 }),
         }),
-        ({ totalThreats, relayActivations, totalAnomalies, totalReadings, uptimeRatio }) => {
+        async ({ totalThreats, relayActivations, totalAnomalies, totalReadings, uptimeRatio }) => {
           // Replicate the health score calculation logic from auraScore.ts
           // The score should clamp to [0, 100]
           const threatPenalty = Math.min(totalThreats * 2, 40);

@@ -107,7 +107,7 @@ describe('Property 7: Alerta severity mapping is exhaustive', () => {
     }
   });
 
-  it('severity mapping is deterministic — same input always produces same output', () => {
+  it('severity mapping is deterministic — same input always produces same output', async () => {
     await fc.assert(
       fc.property(
         fc.constantFrom('low', 'medium', 'high', 'critical', 'anomaly', 'offline') as fc.Arbitrary<Severity | 'anomaly' | 'offline'>,
