@@ -31,8 +31,9 @@ export function useDevices(useMockData = config.features.mockData) {
         const data = await apiClient.get<{ devices: Device[] }>('/devices');
         return data.devices;
       } catch (error) {
-        console.log('Using mock device data');
-        return mockDevices as unknown as Device[];
+        console.error('Failed to fetch devices, returning empty array:', error);
+        Sentry.captureException(error);
+        return [];
       }
     },
   });
