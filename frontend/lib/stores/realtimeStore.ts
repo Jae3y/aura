@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AlertaStatus, Database } from '../types/database';
+import type { AlertaStatus, Database, VoiceCommand } from '../types/database';
 
 type Device = Database['public']['Tables']['devices']['Row'];
 type SensorReading = Database['public']['Tables']['sensor_readings']['Row'];
@@ -8,13 +8,16 @@ type ThreatEvent = Database['public']['Tables']['threat_events']['Row'];
 interface RealtimeState {
   // Device state
   devices: Map<string, Device>;
-  
+
   // Recent sensor readings (keyed by device ID)
   recentReadings: Map<string, SensorReading[]>;
-  
+
   // Recent threat events (global list)
   recentThreats: ThreatEvent[];
-  
+
+  // Recent voice commands
+  voiceCommands: VoiceCommand[];
+
   // Connection status
   isConnected: boolean;
 
@@ -22,23 +25,28 @@ interface RealtimeState {
   upsertDevice: (device: Device) => void;
   updateDeviceStatus: (deviceId: string, updates: Partial<Device>) => void;
   removeDevice: (deviceId: string) => void;
-  
+
   addReading: (reading: SensorReading) => void;
   addThreat: (threat: ThreatEvent) => void;
   updateThreat: (threatId: string, updates: Partial<ThreatEvent>) => void;
   updateAlertaStatus: (threatId: string, alertaStatus: AlertaStatus) => void;
-  
+
+  addVoiceCommand: (command: VoiceCommand) => void;
+  setVoiceCommands: (commands: VoiceCommand[]) => void;
+
   setConnected: (connected: boolean) => void;
   clearAll: () => void;
 }
 
 const MAX_READINGS_PER_DEVICE = 50;
 const MAX_THREATS = 100;
+const MAX_VOICE_COMMANDS = 50;
 
 export const useRealtimeStore = create<RealtimeState>((set) => ({
   devices: new Map(),
   recentReadings: new Map(),
   recentThreats: [],
+  voiceCommands: [],
   isConnected: false,
 
   upsertDevice: (device) =>
@@ -77,7 +85,6 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
       const newReadings = new Map(state.recentReadings);
       const deviceReadings = newReadings.get(reading.device_id) || [];
 
-      // Add new reading at the beginning
       const updatedReadings = [reading, ...deviceReadings].slice(
         0,
         MAX_READINGS_PER_DEVICE
@@ -108,6 +115,17 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
       ),
     })),
 
+  addVoiceCommand: (command) =>
+    set((state) => ({
+      voiceCommands: [command, ...state.voiceCommands].slice(
+        0,
+        MAX_VOICE_COMMANDS
+      ),
+    })),
+
+  setVoiceCommands: (commands) =>
+    set({ voiceCommands: commands.slice(0, MAX_VOICE_COMMANDS) }),
+
   setConnected: (connected) => set({ isConnected: connected }),
 
   clearAll: () =>
@@ -115,6 +133,7 @@ export const useRealtimeStore = create<RealtimeState>((set) => ({
       devices: new Map(),
       recentReadings: new Map(),
       recentThreats: [],
+      voiceCommands: [],
       isConnected: false,
     }),
 }));

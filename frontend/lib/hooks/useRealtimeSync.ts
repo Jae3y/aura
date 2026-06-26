@@ -3,7 +3,7 @@ import { getSocketClient } from '../socketClient';
 import { useRealtimeStore } from '../stores/realtimeStore';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../toast';
-import type { AlertaStatus, Database } from '../types/database';
+import type { AlertaStatus, Database, VoiceCommand } from '../types/database';
 
 type Device = Database['public']['Tables']['devices']['Row'];
 type SensorReading = Database['public']['Tables']['sensor_readings']['Row'];
@@ -22,6 +22,7 @@ export function useRealtimeSync() {
     addThreat,
     updateAlertaStatus,
     setConnected,
+    addVoiceCommand,
   } = useRealtimeStore();
 
   useEffect(() => {
@@ -90,13 +91,10 @@ export function useRealtimeSync() {
       };
 
       // Voice command handler
-      const handleVoiceNew = (data: {
-        command: string;
-        deviceId: string;
-        wasExecuted: boolean;
-      }) => {
-        if (data.wasExecuted) {
-          toast.success(`Voice command: "${data.command}"`, 'Command Executed');
+      const handleVoiceNew = (data: { cmd: VoiceCommand }) => {
+        addVoiceCommand(data.cmd);
+        if (data.cmd.was_executed) {
+          toast.success(`Voice command: "${data.cmd.raw_command}"`, 'Command Executed');
         }
       };
 
@@ -149,5 +147,6 @@ export function useRealtimeSync() {
     addThreat,
     updateAlertaStatus,
     setConnected,
+    addVoiceCommand,
   ]);
 }

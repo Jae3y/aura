@@ -14,7 +14,7 @@ import { AURA_SOLANA_EVENTS } from '../blockchain/events';
 const router = Router();
 router.use(authMiddleware);
 
-const CONFIDENCE_THRESHOLD = 0.7;
+const CONFIDENCE_THRESHOLD = 0.75;
 
 const commandSchema = z.object({
   device_id: z.string().uuid(),
@@ -42,13 +42,11 @@ router.post('/voice/command', async (req, res, next) => {
     });
 
     if (body.confidence_score > CONFIDENCE_THRESHOLD && body.action_triggered) {
-      if (body.relay_channel) {
-        await publishCommand(body.device_id, {
-          command: body.action_triggered,
-          channel: body.relay_channel,
-          requestedBy: req.user!.walletAddress ?? req.user!.id,
-        });
-      }
+      await publishCommand(body.device_id, {
+        command: body.action_triggered,
+        channel: body.relay_channel,
+        requestedBy: req.user!.walletAddress ?? req.user!.id,
+      });
       const updated = await updateVoiceCommand(cmd.id, {
         was_executed: true,
         execution_result: 'executed',
