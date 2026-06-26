@@ -1,7 +1,12 @@
 'use client';
 
-import { CheckCircle2, Copy, ExternalLink, Loader2 } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from '@/lib/toast';
+
+const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+function isValid(addr: string): boolean {
+  return addr.length >= 32 && addr.length <= 44 && BASE58_RE.test(addr);
+}
 
 interface SolanaExplorerBadgeProps {
   signature: string | null;
@@ -10,11 +15,29 @@ interface SolanaExplorerBadgeProps {
 }
 
 export function SolanaExplorerBadge({ signature, confirmed = false, slot }: SolanaExplorerBadgeProps) {
-  if (!signature || !confirmed) {
+  if (!signature) {
     return (
       <span className="inline-flex items-center gap-2 rounded border border-amber-500/30 px-2 py-1 text-xs text-amber-300">
         <Loader2 className="h-3 w-3 animate-spin" />
         Pending
+      </span>
+    );
+  }
+
+  if (!confirmed) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded border border-amber-500/30 px-2 py-1 text-xs text-amber-300">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Pending
+      </span>
+    );
+  }
+
+  if (!isValid(signature)) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded border border-amber-500/30 px-2 py-1 text-xs text-amber-300">
+        <AlertTriangle className="h-3 w-3" />
+        Invalid
       </span>
     );
   }

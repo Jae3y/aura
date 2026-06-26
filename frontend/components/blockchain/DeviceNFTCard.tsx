@@ -1,11 +1,17 @@
 'use client';
 
-import { ExternalLink, ShieldCheck } from 'lucide-react';
+import { ExternalLink, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 interface DeviceNFTCardProps {
   mintAddress?: string | null;
   metadata?: Record<string, unknown> | null;
   explorerUrl?: string | null;
+}
+
+const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+function isValidSolanaAddress(addr: string): boolean {
+  return addr.length >= 32 && addr.length <= 44 && BASE58_RE.test(addr);
 }
 
 export function DeviceNFTCard({ mintAddress, metadata, explorerUrl }: DeviceNFTCardProps) {
@@ -18,6 +24,7 @@ export function DeviceNFTCard({ mintAddress, metadata, explorerUrl }: DeviceNFTC
     );
   }
 
+  const isValid = isValidSolanaAddress(mintAddress);
   const attributes = Array.isArray(metadata?.attributes) ? metadata.attributes : [];
 
   return (
@@ -30,7 +37,14 @@ export function DeviceNFTCard({ mintAddress, metadata, explorerUrl }: DeviceNFTC
           </div>
           <p className="mt-2 break-all font-mono text-xs text-zinc-400">{mintAddress}</p>
         </div>
-        <span className="rounded border border-emerald-500/30 px-2 py-1 text-xs text-emerald-300">Ownership verified</span>
+        {isValid ? (
+          <span className="rounded border border-emerald-500/30 px-2 py-1 text-xs text-emerald-300">Ownership verified</span>
+        ) : (
+          <span className="flex items-center gap-1 rounded border border-amber-500/30 px-2 py-1 text-xs text-amber-300">
+            <AlertTriangle size={10} />
+            Invalid address
+          </span>
+        )}
       </div>
 
       {attributes.length > 0 && (
@@ -47,15 +61,17 @@ export function DeviceNFTCard({ mintAddress, metadata, explorerUrl }: DeviceNFTC
         </div>
       )}
 
-      <a
-        className="mt-4 inline-flex items-center gap-2 rounded border border-emerald-500/30 px-3 py-2 text-sm text-emerald-300 hover:bg-emerald-500/10"
-        href={explorerUrl ?? `https://explorer.solana.com/address/${mintAddress}?cluster=devnet`}
-        target="_blank"
-        rel="noreferrer"
-      >
-        View on Solana
-        <ExternalLink className="h-4 w-4" />
-      </a>
+      {isValid && (
+        <a
+          className="mt-4 inline-flex items-center gap-2 rounded border border-emerald-500/30 px-3 py-2 text-sm text-emerald-300 hover:bg-emerald-500/10"
+          href={explorerUrl ?? `https://explorer.solana.com/address/${mintAddress}?cluster=devnet`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          View on Solana
+          <ExternalLink className="h-4 w-4" />
+        </a>
+      )}
     </section>
   );
 }
