@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, MicOff, CheckCircle2, Clock, Zap, AlertCircle, ChevronDown, XCircle, Loader2 } from "lucide-react";
+import { Mic, MicOff, CheckCircle2, Clock, Zap, AlertCircle, ChevronDown, XCircle, Loader2, Activity, Battery, Wifi, WifiOff } from "lucide-react";
 import { SolanaExplorerBadge } from "@/components/ui/SolanaExplorerBadge";
 import { GlitchText } from "@/components/ui/GlitchText";
 import { pageTransitionVariants, staggerParentVariants, staggerChildVariants, toastVariants } from "@/lib/animations";
@@ -91,9 +91,19 @@ export default function VoicePage() {
   const [micError, setMicError] = useState<string | null>(null);
   const [interimText, setInterimText] = useState("");
   const [lastCommand, setLastCommand] = useState<string | null>(null);
+  const [lastExecuted, setLastExecuted] = useState(false);
+  const [lastAction, setLastAction] = useState<string | null>(null);
 
   const storeCommands = useRealtimeStore((s) => s.voiceCommands);
   const [fetchedCommands, setFetchedCommands] = useState<VoiceCommand[]>([]);
+
+  // Live device state from realtime store
+  const devicesMap = useRealtimeStore((s) => s.devices);
+  const recentReadings = useRealtimeStore((s) => s.recentReadings);
+  const selectedDevice = selectedDeviceId ? devicesMap.get(selectedDeviceId) : undefined;
+  const latestReading = selectedDeviceId
+    ? (recentReadings.get(selectedDeviceId) ?? [])[0]
+    : undefined;
 
   const barsRef = useRef<HTMLDivElement>(null);
   const tlRef = useRef<gsap.core.Timeline | null>(null);
@@ -178,10 +188,10 @@ export default function VoicePage() {
   // ---------- Submit voice command to backend ----------
   const submitCommand = useCallback(
     async (transcript: string, confidence: number) => {
-      if (!selectedDeviceId) return;
+      if (!selectedDeviceId) return { executed: false, action: null as string | null };
       const intent = resolveIntent(transcript);
       try {
-        await apiClient.post("/voice/command", {
+        const res = await apiClient.post<{ command: VoiceCommand }>("/voice/command", {
           device_id: selectedDeviceId,
           raw_command: transcript,
           confidence_score: confidence,
@@ -189,8 +199,10 @@ export default function VoicePage() {
           action_triggered: intent.action_triggered,
           relay_channel: intent.relay_channel,
         });
+        const cmd = res.command;
+        return { executed: cmd.was_executed, action: cmd.action_triggered };
       } catch {
-        // The backend logged it; command may not be executed
+        return { executed: false, action: null as string | null };
       }
     },
     [selectedDeviceId]
@@ -249,9 +261,16 @@ export default function VoicePage() {
           const transcript = result[0].transcript.trim();
           const confidence = result[0].confidence;
           if (transcript) {
-            submitCommandRef.current(transcript, confidence);
-            setLastCommand(transcript);
-            setTimeout(() => setLastCommand(null), 3000);
+            submitCommandRef.current(transcript, confidence).then((r: { executed: boolean; action: string | null }) => {
+              setLastCommand(transcript);
+              setLastExecuted(r.executed);
+              setLastAction(r.action);
+              setTimeout(() => {
+                setLastCommand(null);
+                setLastExecuted(false);
+                setLastAction(null);
+              }, 4000);
+            });
           }
         } else {
           setInterimText(result[0].transcript);
@@ -469,7 +488,49 @@ export default function VoicePage() {
         </AnimatePresence>
       </motion.button>
 
-      {/* Toast: recognized command */}
+      {/* Device Status Panel */}
+      {selectedDevice && (
+        <div className="w-full max-w-xs mb-6 bg-card border border-zinc-800 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              {selectedDevice.is_online ? (
+                <Wifi size={12} className="text-accent-teal" />
+              ) : (
+                <WifiOff size={12} className="text-accent-danger" />
+              )}
+              <span className="text-xs font-bold text-white">{selectedDevice.name}</span>
+              <span className={clsx(
+                "w-1.5 h-1.5 rounded-full",
+                selectedDevice.is_online ? "bg-accent-teal" : "bg-accent-danger"
+              )} />
+            </div>
+            <span className="text-[9px] font-mono text-text-muted">
+              {selectedDevice.last_seen ? timeAgo(selectedDevice.last_seen) : "never"}
+            </span>
+          </div>
+
+          {latestReading ? (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center">
+                <span className="text-[8px] text-text-muted font-mono uppercase tracking-wider">Voltage</span>
+                <span className="text-sm font-bold text-white">{latestReading.voltage.toFixed(1)}<span className="text-[9px] text-text-muted">V</span></span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-[8px] text-text-muted font-mono uppercase tracking-wider">Current</span>
+                <span className="text-sm font-bold text-white">{latestReading.current_amps.toFixed(2)}<span className="text-[9px] text-text-muted">A</span></span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-[8px] text-text-muted font-mono uppercase tracking-wider">Power</span>
+                <span className="text-sm font-bold text-white">{latestReading.power_watts.toFixed(1)}<span className="text-[9px] text-text-muted">W</span></span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-center text-[10px] text-text-muted">No sensor data yet</p>
+          )}
+        </div>
+      )}
+
+      {/* Toast: command result */}
       <div className="fixed bottom-24 left-4 right-4 z-50 flex justify-center pointer-events-none">
         <AnimatePresence>
           {lastCommand && (
@@ -478,12 +539,27 @@ export default function VoicePage() {
               initial="initial"
               animate="animate"
               exit="exit"
-              className="flex items-center space-x-3 bg-card border border-accent-teal/40 rounded-xl px-4 py-3 shadow-[0_0_20px_rgba(20,184,166,0.2)]"
+              className={clsx(
+                "flex items-center space-x-3 bg-card border rounded-xl px-4 py-3 shadow-[0_0_20px_rgba(20,184,166,0.2)]",
+                lastExecuted ? "border-accent-teal/40" : "border-zinc-700"
+              )}
             >
-              <Zap size={16} className="text-accent-teal shrink-0" />
+              {lastExecuted ? (
+                <CheckCircle2 size={16} className="text-accent-teal shrink-0" />
+              ) : (
+                <AlertCircle size={16} className="text-amber-400 shrink-0" />
+              )}
               <div>
-                <div className="text-[10px] text-accent-teal font-bold tracking-widest uppercase">Command Recognized</div>
+                <div className={clsx(
+                  "text-[10px] font-bold tracking-widest uppercase",
+                  lastExecuted ? "text-accent-teal" : "text-amber-400"
+                )}>
+                  {lastExecuted ? "Command Executed" : "Command Logged"}
+                </div>
                 <div className="text-sm text-white font-medium">&ldquo;{lastCommand}&rdquo;</div>
+                {lastAction && (
+                  <div className="text-[9px] font-mono text-text-muted mt-0.5">Action: {lastAction}</div>
+                )}
               </div>
             </motion.div>
           )}
