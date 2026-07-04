@@ -119,3 +119,49 @@ export function getWalletPublicKey(): string {
   const { keypair: kp } = getClient();
   return kp.publicKey.toBase58();
 }
+
+const AIRDROP_AMOUNT = 2 * 1_000_000_000;
+const MIN_BALANCE = 0.1 * 1_000_000_000;
+
+// Checks the wallet balance and requests a Devnet airdrop if below 0.1 SOL.
+// Retries up to 3 times since the public faucet is sometimes rate-limited.
+export async function tryAutoAirdrop(): Promise<void> {
+  const { connection: conn, keypair: kp } = getClient();
+  const pubkey = kp.publicKey.toBase58();
+  let balance = await conn.getBalance(kp.publicKey);
+  // eslint-disable-next-line no-console
+  console.log(`Solana wallet ${pubkey} balance: ${(balance / 1_000_000_000).toFixed(4)} SOL`);
+
+  if (balance >= MIN_BALANCE) {
+    // eslint-disable-next-line no-console
+    console.log('Balance sufficient — no airdrop needed');
+    return;
+  }
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    // eslint-disable-next-line no-console
+    console.log(`Attempting airdrop ${attempt}/3 — requesting ${AIRDROP_AMOUNT / 1_000_000_000} SOL...`);
+    try {
+      const sig = await conn.requestAirdrop(kp.publicKey, AIRDROP_AMOUNT);
+      await conn.confirmTransaction(sig, 'confirmed');
+      // eslint-disable-next-line no-console
+      console.log(`Airdrop succeeded: ${sig}`);
+
+      balance = await conn.getBalance(kp.publicKey);
+      // eslint-disable-next-line no-console
+      console.log(`New balance: ${(balance / 1_000_000_000).toFixed(4)} SOL`);
+      return;
+    } catch (airdropErr) {
+      // eslint-disable-next-line no-console
+      console.warn(`Airdrop attempt ${attempt}/3 failed:`, (airdropErr as Error).message);
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+
+  // eslint-disable-next-line no-console
+  console.warn(
+    `\n⚠️  Airdrop failed after 3 attempts.\n` +
+    `   Fund this wallet manually at https://faucet.solana.com/ or using:\n` +
+    `   solana airdrop 2 ${pubkey} --url ${config.SOLANA_RPC_URL}\n`
+  );
+}

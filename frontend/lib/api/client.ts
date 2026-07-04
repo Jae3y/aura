@@ -25,9 +25,16 @@ class APIClient {
   }
 
   private getAuthHeaders(): HeadersInit {
-    const { session } = useAuthStore.getState();
+    const { session, clearSession } = useAuthStore.getState();
     
     if (!session) {
+      return {};
+    }
+
+    // Don't send expired tokens — prevents 401 before the periodic
+    // expiry check in useAuth.ts catches it.
+    if (session.expires_at && Date.now() >= session.expires_at * 1000) {
+      clearSession();
       return {};
     }
 
@@ -62,13 +69,16 @@ class APIClient {
 
       // Handle other error status codes
       if (!response.ok) {
-        const error = await response.json().catch(() => ({
+        const body = await response.json().catch(() => ({
           message: `HTTP ${response.status}`,
         }));
+        // Backend wraps errors in { error: { message, status, code } }.
+        // Unwrap so the actual error message surfaces instead of "Request failed".
+        const errBody = body.error ?? body;
         throw new APIError(
-          error.message || 'Request failed',
+          errBody.message || 'Request failed',
           response.status,
-          error.code
+          errBody.code
         );
       }
 

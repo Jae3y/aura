@@ -100,13 +100,33 @@ app.use(errorHandler);
 import { initSocket } from './socket';
 import { connectMQTT } from './services/mqtt';
 import { startSolanaQueue } from './blockchain/solanaQueue';
+import { getWalletPublicKey, initSolanaClient, tryAutoAirdrop } from './services/solana';
 
 initSocket(server);
+
+// Solana queue always runs — we have valid RPC + keypair configured.
+// Only MQTT is gated by MOCK_INTEGRATIONS (no local broker in dev).
+startSolanaQueue();
+
+// Initialize Solana client and ensure the wallet has Devnet SOL.
+(async () => {
+  try {
+    initSolanaClient();
+    const pubkey = getWalletPublicKey();
+    // eslint-disable-next-line no-console
+    console.log(`Solana wallet: ${pubkey} (${config.SOLANA_RPC_URL})`);
+    // Try to airdrop if needed (non-blocking; server starts regardless).
+    await tryAutoAirdrop();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('Solana client init failed:', (err as Error).message);
+  }
+})();
+
 if (config.MOCK_INTEGRATIONS) {
   // eslint-disable-next-line no-console
-  console.log('Mock integrations enabled; MQTT and Solana workers are disabled.');
+  console.log('Mock integrations enabled; MQTT workers are disabled.');
 } else {
-  startSolanaQueue();
   connectMQTT().catch((err) => {
     Sentry.captureException(err);
     // eslint-disable-next-line no-console

@@ -46,6 +46,11 @@ export const SECONDARY_NAV: Record<string, Array<{ href: string; label: string }
     { href: "/analytics", label: "Analytics" },
     { href: "/blockchain", label: "Ledger" },
   ],
+  "/blockchain": [
+    { href: "/blockchain", label: "Ledger" },
+    { href: "/reports", label: "Reports" },
+    { href: "/analytics", label: "Analytics" },
+  ],
   "/access": [
     { href: "/access", label: "Access" },
     { href: "/profile", label: "Profile" },
@@ -54,7 +59,7 @@ export const SECONDARY_NAV: Record<string, Array<{ href: string; label: string }
   "/profile": [
     { href: "/profile", label: "Profile" },
     { href: "/settings", label: "Settings" },
-    { href: "/connect", label: "Connect" },
+    { href: "/access", label: "Access" },
   ],
 };
 
@@ -74,7 +79,7 @@ const TITLES: Array<[string, string]> = [
   ["/profile", "Profile"],
   ["/devices", "Devices"],
   ["/threats", "Threats"],
-  ["/blockchain", "Blockchain"],
+  ["/blockchain", "Blockchain Ledger"],
 ];
 
 function getRouteTitle(pathname: string | null) {

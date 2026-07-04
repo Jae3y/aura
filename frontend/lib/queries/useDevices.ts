@@ -134,10 +134,11 @@ export function usePairDevice(deviceId: string) {
       }>(`/devices/${deviceId}/pair`);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: deviceKeys.detail(deviceId) });
       queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
-      toast.success('Device paired successfully', 'NFT Minted');
+      queryClient.invalidateQueries({ queryKey: ['device-nft', deviceId] });
+      toast.success(`NFT Minted: ${result.mintAddress.slice(0, 8)}...`);
     },
     onError: (error) => {
       toast.error('Failed to pair device');

@@ -12,6 +12,7 @@ import { calculateHealthScore } from '../services/auraScore';
 import { generateReportPdf } from '../services/pdf';
 import { writeMonthlyAudit } from '../services/lisk';
 import { computeMonthlyStats } from '../services/reportStats';
+import { sendAlert } from '../services/alerta';
 
 const router = Router();
 router.use(authMiddleware);
@@ -77,7 +78,22 @@ router.post('/devices/:id/reports', async (req, res, next) => {
     await writeMonthlyAudit(report);
     const final = await getReportById(report.id);
 
+    // Respond immediately — Alerta runs in background (5-min retry loop).
     res.status(201).json({ report: final });
+
+    // Fire Alerta notification after response is sent.
+    sendAlert({
+      channelRef: '',
+      title: `📋 Monthly Risk Audit — ${device.name}`,
+      message:
+        `AURA monthly audit for ${report_month} is complete.\n` +
+        `Device: ${device.name}\n` +
+        `Location: ${device.location_label ?? 'Main Node'}\n` +
+        `Health Score: ${health}/100\n` +
+        `Threats: ${stats.total_threats} | Surges: ${stats.surges_blocked}\n` +
+        `PDF: ${pdfUrl ?? 'Generating…'}`,
+      severity: 'Info',
+    }).catch((e) => console.error('Report Alerta dispatch failed:', e));
   } catch (err) {
     next(err);
   }

@@ -58,3 +58,11 @@ export async function updateLiskTx(id: string, txId: string): Promise<void> {
     .eq('id', id);
   if (error) throw error;
 }
+
+export async function updatePdfUrl(id: string, pdfUrl: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('monthly_reports')
+    .update({ pdf_url: pdfUrl })
+    .eq('id', id);
+  if (error) throw error;
+}

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { useThreats } from "@/lib/queries/useThreats";
+import { useEnvironmentStore } from "@/lib/stores/environmentStore";
 
 interface TopBarProps {
   title?: string;
@@ -16,6 +17,7 @@ export function TopBar({ title, showBack = false, secondaryItems = [] }: TopBarP
   const router = useRouter();
   const pathname = usePathname();
   const { data: threats = [] } = useThreats("1", 100, true);
+  const { config } = useEnvironmentStore();
   
   const openThreatCount = threats.filter((threat) => threat.alerta_status === "open").length;
 
@@ -63,10 +65,19 @@ export function TopBar({ title, showBack = false, secondaryItems = [] }: TopBarP
           <Link href="/settings" aria-label="Settings" className="hidden rounded-lg p-2 transition-colors hover:bg-white/5 hover:text-text-primary sm:block">
             <Settings size={20} />
           </Link>
-          <div className="relative hidden items-center justify-center sm:flex">
-            <Shield size={20} className="text-accent-teal" />
-            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent-teal shadow-[0_0_5px_rgba(20,184,166,0.8)]" />
-          </div>
+
+          {/* Environment Badge — clickable, links to /env-control */}
+          <Link
+            href="/env-control"
+            aria-label="Switch environment"
+            className={`hidden sm:flex items-center gap-1.5 rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest border transition-opacity hover:opacity-80 ${config.badgeBg} ${config.badgeBorder} ${config.badgeColor}`}
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
+            </span>
+            {config.shortName}
+          </Link>
         </div>
       </div>
       {secondaryItems.length > 0 && (

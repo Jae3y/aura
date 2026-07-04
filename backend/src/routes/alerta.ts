@@ -118,7 +118,7 @@ router.post('/test/:deviceId', authMiddleware, async (req, res, next) => {
   try {
     const device = await loadOwnedDevice(req.params.deviceId, req.user!.id);
     const result = await sendAlert({
-      channelRef: req.body?.channelRef ?? undefined,
+      channelRef: req.body?.channelRef ?? config.ALERTA_CHANNEL_REF,
       title: `🧪 AURA Test — ${device.name}`,
       message:
         `This is a test notification from AURA.\n` +

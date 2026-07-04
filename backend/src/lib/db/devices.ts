@@ -66,6 +66,20 @@ export async function getDeviceByToken(
   return data;
 }
 
+export async function getDeviceByTokenAndUser(
+  token: string,
+  userId: string
+): Promise<Device | null> {
+  const { data, error } = await supabaseAdmin
+    .from('devices')
+    .select('*')
+    .eq('device_token', token)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function updateDeviceStatus(
   id: string,
   isOnline: boolean

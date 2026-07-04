@@ -13,10 +13,12 @@ import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 import { PriorityAlertModal } from "@/components/ui/PriorityAlertModal";
 import { pageTransitionVariants, staggerParentVariants, staggerChildVariants, pulseNominalVariants, cardHoverVariants } from "@/lib/animations";
 import Link from "next/link";
+import { useEnvironmentStore } from "@/lib/stores/environmentStore";
 
 export default function DashboardPage() {
   const [alertOpen, setAlertOpen] = useState(false);
   const [lockdownActive, setLockdownActive] = useState(false);
+  const { config } = useEnvironmentStore();
 
   const handleLockdown = () => setAlertOpen(true);
   const handleAuthorize = () => {
@@ -24,6 +26,10 @@ export default function DashboardPage() {
     setLockdownActive(true);
     setTimeout(() => setLockdownActive(false), 5000);
   };
+
+  // Environment-specific presence label
+  const presenceLabel =
+    config.id === "hospital" ? "patients" : config.id === "industrial" ? "personnel" : "humans";
 
   return (
     <>
@@ -38,9 +44,23 @@ export default function DashboardPage() {
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <HexGrid rows={8} cols={7} highlightIndices={[5, 12, 19, 26, 33]} />
           <ParticleField count={35} color="#06B6D4" speed={0.3} connected={false} />
-          {/* Bottom gradient fade */}
           <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-base to-transparent" />
         </div>
+
+        {/* Environment Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="relative"
+        >
+          <Link href="/env-control">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest border transition-opacity hover:opacity-80 ${config.badgeBg} ${config.badgeBorder} ${config.badgeColor}`}>
+              <motion.div animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-1.5 h-1.5 rounded-full bg-current" />
+              {config.name}
+            </span>
+          </Link>
+        </motion.div>
 
         {/* Central Status Widget */}
         <motion.div
@@ -126,7 +146,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-baseline space-x-1">
                 <AnimatedCounter value={3} className="text-2xl font-mono font-bold text-white" />
-                <span className="text-xs text-text-muted font-mono uppercase">humans</span>
+                <span className="text-xs text-text-muted font-mono uppercase">{presenceLabel}</span>
               </div>
               <span className="text-[10px] text-accent-teal font-mono mt-1">All Authorized</span>
             </motion.div>
@@ -186,7 +206,7 @@ export default function DashboardPage() {
               />
             </motion.div>
             <Link href="/devices" className="col-span-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-text-secondary transition-colors hover:bg-white/10 hover:text-white sm:col-span-1">
-              Manage Devices
+              Manage {config.devicePlural}
             </Link>
             <Link href="/alerta" className="col-span-2 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-red-200 transition-colors hover:bg-red-400/20 sm:col-span-1">
               Open Alerta
@@ -219,8 +239,8 @@ export default function DashboardPage() {
             animate="animate"
           >
             {[
-              { title: "Main Gate Lock", timeAgo: "2m ago", sig: "4vJ9...kL2p", icon: <AlertOctagon size={14} /> },
-              { title: "Perimeter Sweep", timeAgo: "15m ago", sig: "9xQ1...mB4v", icon: <Radio size={14} /> },
+              { title: config.zones[0] + " Lock", timeAgo: "2m ago", sig: "4vJ9...kL2p", icon: <AlertOctagon size={14} /> },
+              { title: config.zones[1] + " Sweep", timeAgo: "15m ago", sig: "9xQ1...mB4v", icon: <Radio size={14} /> },
               { title: "Climate Routine", timeAgo: "1h ago", sig: "7tN5...pC8x", icon: <Zap size={14} /> },
             ].map((item, i) => (
               <motion.div key={i} variants={staggerChildVariants}>

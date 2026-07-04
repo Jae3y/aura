@@ -7,8 +7,16 @@ import { SolanaExplorerBadge } from "@/components/ui/SolanaExplorerBadge";
 import { Users, Wifi, Battery, ChevronRight, CheckCircle2, AlertCircle } from "lucide-react";
 import { pageTransitionVariants, staggerParentVariants, staggerChildVariants, cardHoverVariants } from "@/lib/animations";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
+import { useEnvironmentStore } from "@/lib/stores/environmentStore";
 
 export default function DetectionMapPage() {
+  const { config } = useEnvironmentStore();
+
+  const zoneLabels = {
+    alertZone: config.id === "hospital" ? "ICU Ward B-4" : config.id === "industrial" ? "Sector 7 East" : "East Perimeter",
+    clearZone: config.id === "hospital" ? "Main Ward Hall" : config.id === "industrial" ? "Control Room" : "Main Living Hall",
+  };
+
   return (
     <motion.div
       variants={pageTransitionVariants}
@@ -25,7 +33,7 @@ export default function DetectionMapPage() {
         animate="animate"
       >
         <motion.div variants={staggerChildVariants} className="bg-card border border-zinc-800 rounded-xl p-3 flex flex-col items-center text-center">
-          <span className="text-[9px] text-text-muted font-bold tracking-widest uppercase mb-1">Subjects</span>
+          <span className="text-[9px] text-text-muted font-bold tracking-widest uppercase mb-1">{config.subjectPlural}</span>
           <AnimatedCounter value={3} className="text-2xl font-mono font-bold text-white" />
         </motion.div>
         <motion.div variants={staggerChildVariants} className="bg-accent-teal/10 border border-accent-teal/30 rounded-xl p-3 flex flex-col items-center text-center">
@@ -80,7 +88,7 @@ export default function DetectionMapPage() {
       {/* Active Zones List */}
       <div className="flex flex-col space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-[10px] font-bold text-text-muted tracking-[0.2em] uppercase">Active Zones</h3>
+          <h3 className="text-[10px] font-bold text-text-muted tracking-[0.2em] uppercase">Active {config.zonePlural}</h3>
         </div>
 
         <motion.div
@@ -90,11 +98,7 @@ export default function DetectionMapPage() {
           animate="animate"
         >
           {/* Alert Zone */}
-          <motion.div
-            variants={staggerChildVariants}
-            whileHover="hover"
-            initial="rest"
-          >
+          <motion.div variants={staggerChildVariants} whileHover="hover" initial="rest">
             <motion.div
               variants={cardHoverVariants}
               className="bg-card border border-accent-danger/40 rounded-xl p-4 flex flex-col relative overflow-hidden shadow-[0_0_15px_rgba(239,68,68,0.05)]"
@@ -103,7 +107,7 @@ export default function DetectionMapPage() {
               <ScanLine color="#EF4444" />
               <div className="flex justify-between items-start mb-3 pl-3">
                 <div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">East Perimeter</h4>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">{zoneLabels.alertZone}</h4>
                   <div className="text-[10px] text-accent-danger font-mono font-bold uppercase mt-0.5 flex items-center">
                     <AlertCircle size={10} className="mr-1" />
                     Restricted · Alert Active
@@ -114,7 +118,7 @@ export default function DetectionMapPage() {
                 </button>
               </div>
               <div className="flex items-center space-x-4 pl-3 text-text-secondary">
-                <div className="flex items-center text-[10px] font-mono text-accent-danger"><Users size={10} className="mr-1" />1 DETECTED</div>
+                <div className="flex items-center text-[10px] font-mono text-accent-danger"><Users size={10} className="mr-1" />1 {config.subject.toUpperCase()}</div>
                 <div className="flex items-center text-[10px] font-mono"><Wifi size={10} className="mr-1" />98%</div>
                 <div className="flex items-center text-[10px] font-mono"><Battery size={10} className="mr-1" />100%</div>
               </div>
@@ -130,7 +134,7 @@ export default function DetectionMapPage() {
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-teal" />
               <div className="flex justify-between items-start mb-3 pl-3">
                 <div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">Main Living Hall</h4>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">{zoneLabels.clearZone}</h4>
                   <div className="text-[10px] text-accent-teal font-mono font-bold uppercase mt-0.5 flex items-center">
                     <CheckCircle2 size={10} className="mr-1" />
                     Occupied · Clear
@@ -141,7 +145,7 @@ export default function DetectionMapPage() {
                 </button>
               </div>
               <div className="flex items-center space-x-4 pl-3 text-text-secondary">
-                <div className="flex items-center text-[10px] font-mono text-accent-cyan"><Users size={10} className="mr-1" />2 DETECTED</div>
+                <div className="flex items-center text-[10px] font-mono text-accent-cyan"><Users size={10} className="mr-1" />2 {config.subjectPlural.toUpperCase()}</div>
                 <div className="flex items-center text-[10px] font-mono"><Wifi size={10} className="mr-1" />92%</div>
                 <div className="flex items-center text-[10px] font-mono"><Battery size={10} className="mr-1" />84%</div>
               </div>

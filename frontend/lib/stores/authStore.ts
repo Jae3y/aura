@@ -71,3 +71,18 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+// Clear expired session on rehydration — prevents stale tokens from
+// causing 401 errors on every API call until the user manually logs out.
+const stored = typeof window !== 'undefined' ? localStorage.getItem('aura-auth') : null;
+if (stored) {
+  try {
+    const parsed = JSON.parse(stored);
+    const session = parsed?.state?.session;
+    if (session?.expires_at && Date.now() >= session.expires_at * 1000) {
+      localStorage.removeItem('aura-auth');
+    }
+  } catch {
+    localStorage.removeItem('aura-auth');
+  }
+}

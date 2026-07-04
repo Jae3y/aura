@@ -56,6 +56,11 @@ async function processItem(item: SolanaQueueItem): Promise<void> {
       return;
     } catch (err) {
       lastError = err;
+      // eslint-disable-next-line no-console
+      console.error(
+        `[Solana Queue] Attempt ${attempt + 1}/${RETRY_DELAYS_MS.length + 1} failed for ${item.eventName}:`,
+        (err as Error).message
+      );
       if (attempt < RETRY_DELAYS_MS.length) {
         await sleep(RETRY_DELAYS_MS[attempt]);
       }
@@ -63,6 +68,10 @@ async function processItem(item: SolanaQueueItem): Promise<void> {
   }
 
   await persistFailure(item);
+  // eslint-disable-next-line no-console
+  console.error(
+    `[Solana Queue] All retries exhausted for ${item.eventName} (${item.table}:${item.rowId})`
+  );
   Sentry.captureException(lastError, {
     tags: { subsystem: 'solana-queue' },
     extra: {

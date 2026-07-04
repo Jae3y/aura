@@ -19,10 +19,19 @@ class SocketClient {
   }
 
   connect() {
-    const { session } = useAuthStore.getState();
+    const { session, clearSession } = useAuthStore.getState();
 
     if (!session) {
       console.warn('Cannot connect socket: no session');
+      return;
+    }
+
+    // Check token expiry before connecting — if expired, clear session
+    // so the user is prompted to re-authenticate rather than getting
+    // persistent "Invalid token" errors from the server.
+    if (session.expires_at && Date.now() >= session.expires_at * 1000) {
+      console.warn('Socket connect skipped: session expired');
+      clearSession();
       return;
     }
 

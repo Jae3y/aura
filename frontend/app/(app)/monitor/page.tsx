@@ -10,11 +10,13 @@ import { CommandCenterButton } from "@/components/ui/CommandCenterButton";
 import { RadarSweep } from "@/components/ui/RadarSweep";
 import { pageTransitionVariants, pulseAlertVariants } from "@/lib/animations";
 import { useThreats } from "@/lib/queries/useThreats";
+import { useEnvironmentStore } from "@/lib/stores/environmentStore";
 
 export default function ThreatMonitorPage() {
-  const [countdown, setCountdown] = useState(42 * 60 + 12); // 42:12
+  const [countdown, setCountdown] = useState(42 * 60 + 12);
   const { data: threats = [] } = useThreats("1", 100, true);
   const activeThreat = threats.find((threat) => threat.alerta_status === "open") || threats[0];
+  const { config } = useEnvironmentStore();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -26,6 +28,24 @@ export default function ThreatMonitorPage() {
   const mm = String(Math.floor(countdown / 60)).padStart(2, "0");
   const ss = String(countdown % 60).padStart(2, "0");
 
+  // Environment-specific labels
+  const monitorTitle =
+    config.id === "hospital"
+      ? "Hospital Threat Monitor"
+      : config.id === "industrial"
+      ? "Industrial Incident Monitor"
+      : "Threat Monitor";
+
+  const subjectLabel =
+    config.id === "hospital"
+      ? "UNKNOWN PATIENT"
+      : config.id === "industrial"
+      ? "UNKNOWN PERSONNEL"
+      : "UNKNOWN SUBJECT";
+
+  const responseLabel1 = config.id === "industrial" ? "Site Siren" : "External Siren";
+  const responseLabel2 = config.id === "hospital" ? "Code Lights" : config.id === "industrial" ? "Zone Isolation" : "Floodlights";
+
   return (
     <motion.div
       variants={pageTransitionVariants}
@@ -34,10 +54,15 @@ export default function ThreatMonitorPage() {
       exit="exit"
       className="relative flex flex-col w-full h-full px-4 pt-4 pb-8 overflow-hidden"
     >
+      {/* Environment badge */}
+      <div className={`mb-4 self-start flex items-center gap-1.5 rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest border ${config.badgeBg} ${config.badgeBorder} ${config.badgeColor}`}>
+        <motion.div animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-1.5 h-1.5 rounded-full bg-current" />
+        {monitorTitle}
+      </div>
+
       {/* Red particle field background */}
       <div className="absolute inset-0 pointer-events-none">
         <ParticleField count={40} color="#06B6D4" speed={0.5} connected />
-        {/* Red vignette overlay */}
         <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-accent-cyan/10 pointer-events-none" />
       </div>
 
@@ -66,7 +91,7 @@ export default function ThreatMonitorPage() {
                 size="md"
               />
               <div className="text-xs font-mono text-accent-danger/80 bg-accent-danger/20 px-2 py-0.5 rounded border border-accent-danger/30 uppercase tracking-wider inline-block mt-2">
-                Device {activeThreat.device_id} · {activeThreat.action_taken ?? "Response pending"}
+                {config.device} {activeThreat.device_id} · {activeThreat.action_taken ?? "Response pending"}
               </div>
             </div>
           </motion.div>
@@ -139,7 +164,7 @@ export default function ThreatMonitorPage() {
         transition={{ delay: 0.4 }}
       >
         {[
-          { icon: <Fingerprint size={14} />, label: "Identity", value: "UNKNOWN SUBJECT", valueColor: "text-white" },
+          { icon: <Fingerprint size={14} />, label: "Identity", value: subjectLabel, valueColor: "text-white" },
           { icon: <Zap size={14} />, label: "Confidence", value: "92.4%", valueColor: "text-accent-warning" },
         ].map((item, i) => (
           <div key={i}>
@@ -164,7 +189,7 @@ export default function ThreatMonitorPage() {
       >
         <motion.div whileTap={{ scale: 0.96 }} whileHover={{ scale: 1.03 }}>
           <CommandCenterButton
-            label="External Siren"
+            label={responseLabel1}
             icon={<Volume2 size={22} />}
             variant="red"
             className="h-20 w-full"
@@ -172,7 +197,7 @@ export default function ThreatMonitorPage() {
         </motion.div>
         <motion.div whileTap={{ scale: 0.96 }} whileHover={{ scale: 1.03 }}>
           <CommandCenterButton
-            label="Floodlights"
+            label={responseLabel2}
             icon={<Zap size={22} />}
             variant="cyan"
             className="h-20 w-full"
