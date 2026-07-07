@@ -1,12 +1,21 @@
-# AURA Autonomous Assistant
+<pre style="color: #22c55e; font-family: 'Courier New', monospace; font-weight: bold; line-height: 1.2;">
+        █████╗ ██╗   ██╗██████╗  █████╗ 
+       ██╔══██╗██║   ██║██╔══██╗██╔══██╗
+       ███████║██║   ██║██████╔╝███████║
+       ██╔══██║██║   ██║██╔══██╗██╔══██║
+       ██║  ██║╚██████╔╝██║  ██║██║  ██║
+       ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
+</pre>
+
+<p style="color: #3b82f6; font-size: 1.1em; text-align: center;">
+<strong>Autonomous Utility &amp; Resource Assistant</strong>
+</p>
 
 > 🛡️ IoT Security Platform with Blockchain Verification and AI-Powered Threat Detection
 
-[![Status](https://img.shields.io/badge/status-complete-success)](./COMPLETION_SUMMARY.md)
-[![Tests](https://img.shields.io/badge/tests-20%2F20%20passing-success)](./TESTING_SUMMARY.md)
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
-**AURA** (Autonomous Utility & Resource Assistant) is a full-stack IoT security platform that combines real-time threat detection, blockchain verification, and AI-powered automation to protect physical environments.
+**AURA** is a full-stack IoT security platform that combines real-time threat detection, blockchain verification, and AI-powered automation to protect physical environments.
 
 ---
 
@@ -159,11 +168,7 @@ aura/
 │   └── public/         # Static assets
 ├── supabase/           # Database migrations
 │   └── migrations/
-├── docs/               # Design documents
 ├── ESP32_MQTT_REFERENCE.md
-├── TESTING_SUMMARY.md
-├── COMPLETION_SUMMARY.md
-├── VERIFICATION_REPORT.md
 └── README.md (this file)
 ```
 
@@ -181,8 +186,6 @@ npm test
 - **20/20** property-based tests passing
 - **2/2** integration tests passing
 - **1/1** unit tests passing
-
-See [TESTING_SUMMARY.md](./TESTING_SUMMARY.md) for detailed coverage.
 
 ---
 
@@ -271,12 +274,7 @@ For ESP32 firmware developers, see [ESP32_MQTT_REFERENCE.md](./ESP32_MQTT_REFERE
 
 ## 📚 Documentation
 
-| Document | Description |
-|----------|-------------|
-| [COMPLETION_SUMMARY.md](./COMPLETION_SUMMARY.md) | Project status and deliverables |
-| [TESTING_SUMMARY.md](./TESTING_SUMMARY.md) | Test coverage report |
-| [VERIFICATION_REPORT.md](./VERIFICATION_REPORT.md) | System verification results |
-| [ESP32_MQTT_REFERENCE.md](./ESP32_MQTT_REFERENCE.md) | Hardware integration guide |
+- [ESP32_MQTT_REFERENCE.md](./ESP32_MQTT_REFERENCE.md) — Hardware integration guide
 
 ---
 
@@ -388,9 +386,8 @@ MIT License - see LICENSE file for details
 ## 📞 Support
 
 For questions or issues:
-1. Check [VERIFICATION_REPORT.md](./VERIFICATION_REPORT.md)
-2. Review [TESTING_SUMMARY.md](./TESTING_SUMMARY.md)
-3. Open an issue on GitHub
+1. Open an issue on GitHub
+2. Check the [ESP32_MQTT_REFERENCE.md](./ESP32_MQTT_REFERENCE.md) for hardware integration
 
 ---
 
