@@ -1,6 +1,7 @@
 'use client';
 
 import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as Sentry from '@sentry/nextjs';
@@ -34,9 +35,23 @@ export function WalletConnectButton() {
     try {
       setIsAuthenticating(true);
 
+      // Find Phantom adapter to check its state
+      const phantomWallet = wallets.find(w => w.adapter.name === 'Phantom');
+
+      // On Android mobile, redirect to Phantom's in-app browser if not detected
+      if (
+        phantomWallet &&
+        phantomWallet.adapter.readyState === WalletReadyState.NotDetected &&
+        /android/i.test(navigator?.userAgent ?? '')
+      ) {
+        const url = encodeURIComponent(window.location.href);
+        const ref = encodeURIComponent(window.location.origin);
+        window.location.href = `https://phantom.app/ul/browse/${url}?ref=${ref}`;
+        return;
+      }
+
       // Ensure Phantom is selected
       if (!hasSelectedWallet) {
-        const phantomWallet = wallets.find(w => w.adapter.name === 'Phantom');
         if (!phantomWallet) {
           throw new Error('Phantom wallet not found. Please install Phantom wallet extension.');
         }
