@@ -1,12 +1,35 @@
-<pre style="color: #14b8a6; font-family: 'Courier New', monospace; font-weight: bold; line-height: 1.3;">
- █████  ██   ██ ██████   █████  
-██   ██ ██   ██ ██   ██ ██   ██ 
-███████ ██   ██ ██████  ███████ 
-██   ██ ██   ██ ██   ██ ██   ██ 
-██   ██  █████  ██   ██ ██   ██ 
-</pre>
+<div style="position: relative; height: 100px; margin: 16px 0;">
+  <pre style="position: absolute; top: 6px; left: 6px; color: rgba(0,0,0,0.25); font-family: 'Courier New', monospace; font-weight: bold; line-height: 1.15; margin: 0;">
+    _   _   _ ____      _    
+   / \ | | | |  _ \    / \   
+  / _ \| | | | |_) |  / _ \  
+ / ___ \ |_| |  _ <  / ___ \ 
+/_/   \_\___/|_| \_\/_/   \_\
+  </pre>
+  <pre style="position: absolute; top: 4px; left: 4px; color: #0f766e; font-family: 'Courier New', monospace; font-weight: bold; line-height: 1.15; margin: 0;">
+    _   _   _ ____      _    
+   / \ | | | |  _ \    / \   
+  / _ \| | | | |_) |  / _ \  
+ / ___ \ |_| |  _ <  / ___ \ 
+/_/   \_\___/|_| \_\/_/   \_\
+  </pre>
+  <pre style="position: absolute; top: 2px; left: 2px; color: #0d9488; font-family: 'Courier New', monospace; font-weight: bold; line-height: 1.15; margin: 0;">
+    _   _   _ ____      _    
+   / \ | | | |  _ \    / \   
+  / _ \| | | | |_) |  / _ \  
+ / ___ \ |_| |  _ <  / ___ \ 
+/_/   \_\___/|_| \_\/_/   \_\
+  </pre>
+  <pre style="position: absolute; top: 0; left: 0; color: #14b8a6; font-family: 'Courier New', monospace; font-weight: bold; line-height: 1.15; margin: 0;">
+    _   _   _ ____      _    
+   / \ | | | |  _ \    / \   
+  / _ \| | | | |_) |  / _ \  
+ / ___ \ |_| |  _ <  / ___ \ 
+/_/   \_\___/|_| \_\/_/   \_\
+  </pre>
+</div>
 
-<p style="color: #0ea5e9; font-size: 1.1em; text-align: center;">
+<p style="color: #06b6d4; font-size: 1.15em; text-align: center; margin-top: 8px;">
 <strong>Autonomous Utility &amp; Resource Assistant</strong>
 </p>
 
