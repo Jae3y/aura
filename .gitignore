@@ -40,3 +40,6 @@ docs/
 COMPLETION_SUMMARY.md
 TASK_COMPLETION_REPORT.md
 VERIFICATION_REPORT.md
+
+# Kiro agent specs — private design documents
+.kiro/
