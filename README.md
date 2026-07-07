@@ -10,6 +10,9 @@
 <p style="color: #3b82f6; font-size: 1.1em; text-align: center;">
 <strong>Autonomous Utility &amp; Resource Assistant</strong>
 </p>
+<p style="color: #6b7280; font-size: 0.75em; text-align: center; margin-top: 2px;">
+created by jaeylo
+</p>
 
 > 🛡️ IoT Security Platform with Blockchain Verification and AI-Powered Threat Detection
 
