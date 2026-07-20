@@ -26,6 +26,8 @@ export interface SolanaQueueItem {
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [1000, 2000, 4000];
 let running = false;
+let outboxReady = false;
+let outboxMissingLogged = false;
 
 export async function enqueueSolanaEvent(item: SolanaQueueItem): Promise<void> {
   try {
@@ -115,6 +117,11 @@ async function loop(): Promise<void> {
   while (true) {
     try {
       const items = await getPendingItems(10);
+      outboxReady = true;
+      if (!outboxMissingLogged) {
+        outboxMissingLogged = true;
+        console.log('[Solana Queue] Outbox table connected');
+      }
       if (items.length === 0) {
         await sleep(1000);
         continue;
@@ -124,7 +131,19 @@ async function loop(): Promise<void> {
         await processItem(item);
       }
     } catch (err) {
-      console.error('[Solana Queue] Loop error:', (err as Error).message);
+      const msg = (err as Error).message ?? '';
+      if (msg.includes('solana_outbox') && msg.includes('could not be found')) {
+        if (!outboxMissingLogged) {
+          console.warn(
+            '[Solana Queue] solana_outbox table not found — queue paused. ' +
+            'Run the migration in supabase/migrations/002_solana_outbox.sql to enable.'
+          );
+          outboxMissingLogged = true;
+        }
+        await sleep(30_000);
+        continue;
+      }
+      console.error('[Solana Queue] Loop error:', msg);
       Sentry.captureException(err, { tags: { subsystem: 'solana-queue-loop' } });
       await sleep(2000);
     }
