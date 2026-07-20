@@ -1,13 +1,15 @@
 import type { NextConfig } from "next";
 import withPWA from "@ducanh2912/next-pwa";
 
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {},
   async rewrites() {
     return [
-      { source: '/api/:path*', destination: 'http://localhost:3001/api/:path*' },
-      { source: '/health', destination: 'http://localhost:3001/health' },
+      { source: '/api/:path*', destination: `${backendUrl}/api/:path*` },
+      { source: '/health', destination: `${backendUrl}/health` },
     ];
   },
 };

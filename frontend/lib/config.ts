@@ -1,4 +1,6 @@
 // Environment configuration with validation
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
 export const config = {
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -6,7 +8,7 @@ export const config = {
   },
   backend: {
     baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL || '/api',
-    socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001',
+    socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || BACKEND_URL,
   },
   solana: {
     network: process.env.NEXT_PUBLIC_SOLANA_NETWORK || 'devnet',
