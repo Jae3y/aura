@@ -18,7 +18,7 @@
 <strong>Autonomous Utility &amp; Resource Assistant</strong>
 </p>
 
-> 🛡️ IoT Security Platform with Blockchain Verification and AI-Powered Threat Detection
+> IoT Security Platform with Blockchain Verification and AI-Powered Threat Detection
 
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
@@ -26,7 +26,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+ and npm
@@ -63,29 +63,29 @@ npm run dev
 
 ---
 
-## 📋 Features
+## Features
 
-### 🔐 Security & Authentication
+### Security & Authentication
 - Wallet-based authentication (Solana Phantom)
 - JWT session management
 - Row-level security (RLS) on all database tables
 - Device token validation for MQTT messages
 
-### 📡 Real-time IoT Platform
+### Real-time IoT Platform
 - MQTT integration with HiveMQ Cloud
 - Live telemetry dashboard
 - Device status monitoring and control
 - Socket.io real-time event streaming
 - 4-channel relay control
 
-### ⛓️ Blockchain Integration
+### Blockchain Integration
 - **Solana:** Real-time event logging to devnet
 - **Lisk:** Monthly audit reports to testnet
 - NFT device pairing with Metaplex
 - Non-blocking queue with automatic retry
 - Transaction verification and explorer links
 
-### 🚨 Threat Management
+### Threat Management
 - Surge detection with auto-cutoff
 - Presence detection (PIR sensors)
 - Anomaly detection in sensor readings
@@ -93,14 +93,14 @@ npm run dev
 - Telegram notifications
 - FCM push notifications with email fallback
 
-### 📊 Monitoring & Reporting
+### Monitoring & Reporting
 - Live telemetry gauges (voltage, current, power)
 - Monthly health score calculation
 - PDF report generation
 - Blockchain-verified audit trails
 - Device uptime tracking
 
-### 🎙️ Voice Control
+### Voice Control
 - Voice command processing
 - Confidence threshold enforcement
 - Command execution logging
@@ -108,7 +108,7 @@ npm run dev
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Tech Stack
 
@@ -151,7 +151,7 @@ Frontend React UI
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 aura/
@@ -181,7 +181,7 @@ aura/
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Run All Tests
 ```bash
@@ -196,7 +196,7 @@ npm test
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Backend Environment Variables
 
@@ -246,7 +246,7 @@ NEXT_PUBLIC_SOLANA_NETWORK=devnet
 
 ---
 
-## 📡 Hardware Integration
+## Hardware Integration
 
 For ESP32 firmware developers, see [ESP32_MQTT_REFERENCE.md](./ESP32_MQTT_REFERENCE.md) for:
 - MQTT broker credentials
@@ -257,7 +257,7 @@ For ESP32 firmware developers, see [ESP32_MQTT_REFERENCE.md](./ESP32_MQTT_REFERE
 
 ---
 
-## 🚀 Deployment
+## Deployment
 
 ### Backend (Render/Railway)
 1. Connect GitHub repository
@@ -279,13 +279,13 @@ For ESP32 firmware developers, see [ESP32_MQTT_REFERENCE.md](./ESP32_MQTT_REFERE
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 - [ESP32_MQTT_REFERENCE.md](./ESP32_MQTT_REFERENCE.md) — Hardware integration guide
 
 ---
 
-## 🛠️ Development
+## Development
 
 ### Available Scripts
 
@@ -308,59 +308,34 @@ npm run lint     # Run ESLint
 
 ---
 
-## 🔒 Security Features
+## Security Features
 
-- ✅ JWT authentication with Supabase
-- ✅ Wallet signature verification (Ed25519)
-- ✅ Row-level security (RLS) on all tables
-- ✅ Device token validation on MQTT
-- ✅ Rate limiting (10-100 req/min per route)
-- ✅ HMAC verification (Alerta webhooks)
-- ✅ Sentry error monitoring
-- ✅ Helmet security headers
-- ✅ CORS configuration
+- JWT authentication with Supabase
+- Wallet signature verification (Ed25519)
+- Row-level security (RLS) on all tables
+- Device token validation on MQTT
+- Rate limiting (10-100 req/min per route)
+- HMAC verification (Alerta webhooks)
+- Sentry error monitoring
+- Helmet security headers
+- CORS configuration
 
 ---
 
-## 📈 System Status
+## System Status
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Backend | ✅ Operational | Port 3001 |
-| Frontend | ✅ Operational | Port 3000 |
-| Database | ✅ Connected | Supabase |
-| MQTT | ⚙️ Mock Mode | Ready for production |
-| Solana | ⚙️ Devnet | Ready for mainnet |
-| Lisk | ⚙️ Testnet | Ready for mainnet |
-| Tests | ✅ Passing | 20/20 tests |
+| Backend | Operational | Port 3001 |
+| Frontend | Operational | Port 3000 |
+| Database | Connected | Supabase |
+| MQTT | Mock Mode | Ready for production |
+| Solana | Devnet | Ready for mainnet |
+| Lisk | Testnet | Ready for mainnet |
 
 ---
 
-## 🎯 Production Readiness
-
-### ✅ Complete
-- [x] All 29 core tasks implemented
-- [x] All 20 optional tests passing
-- [x] Authentication and authorization
-- [x] Database migrations and RLS
-- [x] API endpoints with validation
-- [x] Real-time Socket.io integration
-- [x] Frontend UI with animations
-- [x] Error handling and monitoring
-- [x] Rate limiting on routes
-- [x] Documentation complete
-
-### ⚙️ To Enable for Production
-- [ ] Set `MOCK_INTEGRATIONS=false`
-- [ ] Update Solana to mainnet
-- [ ] Update Lisk to mainnet
-- [ ] Configure production Alerta
-- [ ] Set up FCM production credentials
-- [ ] Deploy to production infrastructure
-
----
-
-## 🤝 Contributing
+## Contributing
 
 This project follows standard Git workflow:
 
@@ -372,13 +347,13 @@ This project follows standard Git workflow:
 
 ---
 
-## 📝 License
+## License
 
 MIT License - see LICENSE file for details
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Solana** - Blockchain infrastructure
 - **Lisk** - Secondary blockchain layer
@@ -390,7 +365,7 @@ MIT License - see LICENSE file for details
 
 ---
 
-## 📞 Support
+## Support
 
 For questions or issues:
 1. Open an issue on GitHub
@@ -398,6 +373,6 @@ For questions or issues:
 
 ---
 
-**Project Status:** ✅ Complete and Operational  
+**Project Status:** Complete and Operational  
 **Last Updated:** June 24, 2026  
 **Version:** 1.0.0
