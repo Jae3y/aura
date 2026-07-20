@@ -46,6 +46,21 @@ vi.mock('../lib/db/voice_commands', () => ({
   getVoiceCommandsByDevice: vi.fn(),
 }));
 
+const mockInsertOutboxItem = vi.fn();
+const mockGetPendingItems = vi.fn();
+const mockMarkProcessing = vi.fn();
+const mockMarkComplete = vi.fn();
+const mockMarkFailed = vi.fn();
+const mockIncrementAttempts = vi.fn();
+vi.mock('../lib/db/solana_outbox', () => ({
+  insertOutboxItem: mockInsertOutboxItem,
+  getPendingItems: mockGetPendingItems,
+  markProcessing: mockMarkProcessing,
+  markComplete: mockMarkComplete,
+  markFailed: mockMarkFailed,
+  incrementAttempts: mockIncrementAttempts,
+}));
+
 vi.mock('../config', () => ({
   config: {
     SOLANA_RPC_URL: 'https://api.devnet.solana.com',
@@ -110,16 +125,6 @@ function makeItem(
     attempts: 0,
   };
 }
-
-// Access the private processItem via module internals.
-// Since it is not exported we drive it through enqueueSolanaEvent + the queue
-// drain loop... but for unit testing, we inline the logic here.
-// Instead, we test the observable outcomes by mocking writeEventToChain to
-// fail 3 times and then asserting the DB helpers were called correctly.
-//
-// NOTE: The actual processItem function is not exported, so we test it
-// through the public enqueueSolanaEvent → processItem → DB helpers chain
-// by watching the mock calls.
 
 // ============================================================================
 // Task 7.1 — Property: Solana queue exhaustion sets solana_confirmed = false

@@ -205,7 +205,7 @@ describe('Integration: MQTT surge → full pipeline (Property 6)', () => {
     });
     vi.mocked(publishCommand).mockResolvedValue(undefined);
     vi.mocked(emitToDevice).mockReturnValue(undefined);
-    vi.mocked(enqueueSolanaEvent).mockReturnValue(undefined);
+    vi.mocked(enqueueSolanaEvent).mockResolvedValue(undefined);
   });
 
   it('side effect 1: inserts a threat_events row in the DB', async () => {

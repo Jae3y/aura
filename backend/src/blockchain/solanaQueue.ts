@@ -5,6 +5,15 @@ import {
   setSolanaUnconfirmed,
 } from '../lib/db/threat_events';
 import { updateVoiceSolanaSignature } from '../lib/db/voice_commands';
+import {
+  insertOutboxItem,
+  getPendingItems,
+  markProcessing,
+  markComplete,
+  markFailed,
+  incrementAttempts,
+} from '../lib/db/solana_outbox';
+import type { OutboxItem } from '../lib/db/solana_outbox';
 
 export interface SolanaQueueItem {
   table: 'threat_events' | 'voice_commands' | 'none';
@@ -14,51 +23,59 @@ export interface SolanaQueueItem {
   attempts?: number;
 }
 
-const RETRY_DELAYS_MS = [1000, 2000, 4000]; // 3 retries, exponential back-off
-const queue: SolanaQueueItem[] = [];
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [1000, 2000, 4000];
 let running = false;
 
-export function enqueueSolanaEvent(item: SolanaQueueItem): void {
-  queue.push({ ...item, attempts: 0 });
+export async function enqueueSolanaEvent(item: SolanaQueueItem): Promise<void> {
+  try {
+    await insertOutboxItem({
+      table_name: item.table,
+      row_id: item.rowId,
+      event_name: item.eventName,
+      memo: item.memo,
+    });
+  } catch (err) {
+    console.error('[Solana Queue] Failed to persist outbox item:', (err as Error).message);
+    Sentry.captureException(err, { tags: { subsystem: 'solana-outbox' } });
+  }
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function persistSuccess(
-  item: SolanaQueueItem,
+  item: OutboxItem,
   signature: string,
   slot: number
 ): Promise<void> {
-  if (item.table === 'threat_events') {
-    await updateSolanaSignature(item.rowId, signature, slot);
-  } else if (item.table === 'voice_commands') {
-    await updateVoiceSolanaSignature(item.rowId, signature);
+  if (item.table_name === 'threat_events') {
+    await updateSolanaSignature(item.row_id, signature, slot);
+  } else if (item.table_name === 'voice_commands') {
+    await updateVoiceSolanaSignature(item.row_id, signature);
   }
 }
 
-async function persistFailure(item: SolanaQueueItem): Promise<void> {
-  if (item.table === 'threat_events') {
-    await setSolanaUnconfirmed(item.rowId);
+async function persistFailure(item: OutboxItem): Promise<void> {
+  if (item.table_name === 'threat_events') {
+    await setSolanaUnconfirmed(item.row_id);
   }
 }
 
-// Processes one item with up to 3 retries. On exhaustion sets the row
-// unconfirmed and captures exactly one Sentry error.
-async function processItem(item: SolanaQueueItem): Promise<void> {
+async function processItem(item: OutboxItem): Promise<void> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     try {
       const { signature, slot } = await writeEventToChain({
-        eventName: item.eventName,
-        memo: item.memo,
+        eventName: item.event_name,
+        memo: item.memo as Record<string, unknown>,
       });
       await persistSuccess(item, signature, slot);
+      await markComplete(item.id);
       return;
     } catch (err) {
       lastError = err;
-      // eslint-disable-next-line no-console
       console.error(
-        `[Solana Queue] Attempt ${attempt + 1}/${RETRY_DELAYS_MS.length + 1} failed for ${item.eventName}:`,
+        `[Solana Queue] Attempt ${attempt + 1}/${RETRY_DELAYS_MS.length + 1} failed for ${item.event_name}:`,
         (err as Error).message
       );
       if (attempt < RETRY_DELAYS_MS.length) {
@@ -67,32 +84,50 @@ async function processItem(item: SolanaQueueItem): Promise<void> {
     }
   }
 
-  await persistFailure(item);
-  // eslint-disable-next-line no-console
-  console.error(
-    `[Solana Queue] All retries exhausted for ${item.eventName} (${item.table}:${item.rowId})`
-  );
-  Sentry.captureException(lastError, {
-    tags: { subsystem: 'solana-queue' },
-    extra: {
-      eventName: item.eventName,
-      table: item.table,
-      rowId: item.rowId,
-      deviceId: item.memo.deviceId,
-    },
-  });
+  const newAttempts = await incrementAttempts(item.id);
+  if (newAttempts >= MAX_ATTEMPTS) {
+    await persistFailure(item);
+    await markFailed(item.id);
+    console.error(
+      `[Solana Queue] All retries exhausted for ${item.event_name} (${item.table_name}:${item.row_id})`
+    );
+    Sentry.captureException(lastError, {
+      tags: { subsystem: 'solana-queue' },
+      extra: {
+        eventName: item.event_name,
+        table: item.table_name,
+        rowId: item.row_id,
+        deviceId: (item.memo as Record<string, unknown>).deviceId,
+      },
+    });
+  } else {
+    const { supabaseAdmin } = await import('../lib/supabase');
+    const { error } = await supabaseAdmin
+      .from('solana_outbox')
+      .update({ status: 'pending' })
+      .eq('id', item.id);
+    if (error) console.error('[Solana Queue] Failed to reset status:', error.message);
+  }
 }
 
 async function loop(): Promise<void> {
   running = true;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
-    const item = queue.shift();
-    if (!item) {
-      await sleep(500);
-      continue;
+    try {
+      const items = await getPendingItems(10);
+      if (items.length === 0) {
+        await sleep(1000);
+        continue;
+      }
+      for (const item of items) {
+        await markProcessing(item.id);
+        await processItem(item);
+      }
+    } catch (err) {
+      console.error('[Solana Queue] Loop error:', (err as Error).message);
+      Sentry.captureException(err, { tags: { subsystem: 'solana-queue-loop' } });
+      await sleep(2000);
     }
-    await processItem(item);
   }
 }
 
@@ -101,6 +136,7 @@ export function startSolanaQueue(): void {
   void loop();
 }
 
-export function _queueLength(): number {
-  return queue.length;
+export async function _queueLength(): Promise<number> {
+  const items = await getPendingItems(1000);
+  return items.length;
 }
