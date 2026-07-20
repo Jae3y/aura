@@ -124,12 +124,13 @@ startSolanaQueue();
 })();
 
 if (config.MOCK_INTEGRATIONS) {
-  // eslint-disable-next-line no-console
-  console.log('Mock integrations enabled; MQTT workers are disabled.');
+  console.warn(
+    '⚠️  Mock integrations enabled — MQTT, Solana writes, and Alerta notifications are disabled. ' +
+    'Do NOT run this configuration in production.'
+  );
 } else {
   connectMQTT().catch((err) => {
     Sentry.captureException(err);
-    // eslint-disable-next-line no-console
     console.error('MQTT initial connection failed:', err);
   });
 }

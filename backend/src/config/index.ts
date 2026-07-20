@@ -86,5 +86,14 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+if (parsed.data.NODE_ENV === 'production' && parsed.data.MOCK_INTEGRATIONS) {
+  console.error(
+    '❌ FATAL: MOCK_INTEGRATIONS=true in production. ' +
+    'This would disable MQTT and allow silent integration failures. ' +
+    'Set MOCK_INTEGRATIONS=false or remove it from your environment.'
+  );
+  process.exit(1);
+}
+
 export const config = parsed.data;
 export type AppConfig = typeof config;
