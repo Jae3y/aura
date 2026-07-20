@@ -5,7 +5,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { defaultLimiter } from './middleware/rateLimit';
+import { defaultLimiter, webhookLimiter } from './middleware/rateLimit';
 
 // ---------------------------------------------------------------------------
 // Sentry must be initialised before anything else so it can hook the runtime.
@@ -31,6 +31,7 @@ app.use(
 // Alerta webhook needs the raw body for HMAC verification.
 app.use(
   '/alerta/webhook',
+  webhookLimiter,
   express.json({
     verify: (req, _res, buf) => {
       (req as express.Request & { rawBody?: Buffer }).rawBody = buf;

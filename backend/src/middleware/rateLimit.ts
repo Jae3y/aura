@@ -24,3 +24,9 @@ export const defaultLimiter = rateLimit({
   max: 60,
   ...common,
 });
+
+export const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  ...common,
+});
