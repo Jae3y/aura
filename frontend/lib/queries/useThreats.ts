@@ -3,32 +3,23 @@ import * as Sentry from '@sentry/nextjs';
 import { apiClient } from '../api/client';
 import { toast } from '../toast';
 import type { ThreatEvent } from '../types/database';
-import { mockThreats } from '../mock-data';
-import { config } from '../config';
 
 export const threatKeys = {
   all: ['threats'] as const,
   byDevice: (deviceId: string | null) => [...threatKeys.all, deviceId] as const,
 };
 
-export function useThreats(deviceId: string | null, limit = 100, useMockData = config.features.mockData): UseQueryResult<ThreatEvent[], Error> {
+export function useThreats(deviceId: string | null, limit = 100): UseQueryResult<ThreatEvent[], Error> {
   return useQuery<ThreatEvent[]>({
     queryKey: [...threatKeys.byDevice(deviceId), limit],
     queryFn: async () => {
-      if (useMockData) {
-        return mockThreats as unknown as ThreatEvent[];
-      }
-      try {
-        const data = await apiClient.get<{ threats: ThreatEvent[] }>(
-          `/devices/${deviceId}/threats?limit=${limit}`
-        );
-        return data.threats;
-      } catch (error) {
-        console.log('Using mock threat data');
-        return mockThreats as unknown as ThreatEvent[];
-      }
+      const data = await apiClient.get<{ threats: ThreatEvent[] }>(
+        `/devices/${deviceId}/threats?limit=${limit}`
+      );
+      return data.threats;
     },
-    enabled: Boolean(deviceId) || useMockData,
+    enabled: Boolean(deviceId),
+    refetchInterval: 15000,
   });
 }
 

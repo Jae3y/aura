@@ -16,7 +16,7 @@ interface TopBarProps {
 export function TopBar({ title, showBack = false, secondaryItems = [] }: TopBarProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: threats = [] } = useThreats("1", 100, true);
+  const { data: threats = [] } = useThreats("1", 100);
   const { config } = useEnvironmentStore();
   
   const openThreatCount = threats.filter((threat) => threat.alerta_status === "open").length;

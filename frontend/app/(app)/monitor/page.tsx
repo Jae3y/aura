@@ -14,7 +14,7 @@ import { useEnvironmentStore } from "@/lib/stores/environmentStore";
 
 export default function ThreatMonitorPage() {
   const [countdown, setCountdown] = useState(42 * 60 + 12);
-  const { data: threats = [] } = useThreats("1", 100, true);
+  const { data: threats = [] } = useThreats("1", 100);
   const activeThreat = threats.find((threat) => threat.alerta_status === "open") || threats[0];
   const { config } = useEnvironmentStore();
 

@@ -15,7 +15,7 @@ export default function ThreatsPage() {
   const { config } = useEnvironmentStore();
   const { data: devices = [] } = useDevices();
   const deviceId = devices[0]?.id ?? "1";
-  const { data: threats = [] } = useThreats(deviceId, 100, true);
+  const { data: threats = [] } = useThreats(deviceId, 100);
   const [filter, setFilter] = useState<Filter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
