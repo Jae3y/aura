@@ -22,6 +22,7 @@ import { useDevices } from "@/lib/queries/useDevices";
 import { useEnvironmentStore } from "@/lib/stores/environmentStore";
 import type { AlertaStatus } from "@/lib/types/database";
 import { SolanaExplorerBadge } from "@/components/blockchain/SolanaExplorerBadge";
+import { useRealtimeStore } from "@/lib/stores/realtimeStore";
 
 type Filter = "all" | AlertaStatus;
 
@@ -46,25 +47,36 @@ export default function AlertaPage() {
   const { data: threats = [] } = useThreats(primaryDeviceId, 100);
   const { config } = useEnvironmentStore();
   const { mutate: updateThreat } = useUpdateThreat(primaryDeviceId);
+  const realtimeThreats = useRealtimeStore((s) => s.recentThreats);
 
-  const filteredThreats = threats.filter((t) =>
+  // Merge: start with queried threats, overlay real-time updates, deduplicate by id
+  const allThreats = (() => {
+    const map = new Map<string, (typeof threats)[number]>();
+    for (const t of threats) map.set(t.id, t);
+    for (const t of realtimeThreats) map.set(t.id, t as (typeof threats)[number]);
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+    );
+  })();
+
+  const filteredThreats = allThreats.filter((t) =>
     activeFilter === "all" ? true : t.alerta_status === activeFilter
   );
 
-  const openCount = threats.filter((t) => t.alerta_status === "open").length;
-  const ackCount = threats.filter((t) => t.alerta_status === "ack").length;
-  const closedCount = threats.filter((t) => t.alerta_status === "closed").length;
-  const total = threats.length || 1;
+  const openCount = allThreats.filter((t) => t.alerta_status === "open").length;
+  const ackCount = allThreats.filter((t) => t.alerta_status === "ack").length;
+  const closedCount = allThreats.filter((t) => t.alerta_status === "closed").length;
+  const total = allThreats.length || 1;
   const ackRate = Math.round((ackCount + closedCount) / total * 100);
 
-  const sevCounts = threats.reduce(
+  const sevCounts = allThreats.reduce(
     (acc, t) => {
       acc[t.severity] = (acc[t.severity] ?? 0) + 1;
       return acc;
     },
     {} as Record<string, number>
   );
-  const sevTotal = threats.length || 1;
+  const sevTotal = allThreats.length || 1;
   const sevDist = [
     { label: "Critical", pct: Math.round(((sevCounts.critical ?? 0) / sevTotal) * 100), color: "bg-red-500" },
     { label: "High", pct: Math.round(((sevCounts.high ?? 0) / sevTotal) * 100), color: "bg-orange-500" },
@@ -114,7 +126,7 @@ export default function AlertaPage() {
           { label: `Open ${config.threatPlural}`, value: openCount, icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
           { label: "Acknowledged", value: ackCount, icon: Bell, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
           { label: "Resolved", value: closedCount, icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-          { label: "Total Events", value: threats.length, icon: Clock, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
+          { label: "Total Events", value: allThreats.length, icon: Clock, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
         ].map((stat, index) => (
           <motion.div
             key={index}
@@ -194,7 +206,7 @@ export default function AlertaPage() {
                 : "bg-white/5 border-white/10 text-text-secondary hover:bg-white/10"
             }`}
           >
-            {f === "all" ? `All (${threats.length})` : `${f} (${threats.filter((t) => t.alerta_status === f).length})`}
+            {f === "all" ? `All (${allThreats.length})` : `${f} (${allThreats.filter((t) => t.alerta_status === f).length})`}
           </button>
         ))}
       </div>
