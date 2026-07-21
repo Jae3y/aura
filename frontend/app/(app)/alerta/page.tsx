@@ -14,12 +14,10 @@ import {
   Filter,
   RefreshCw,
   ShieldAlert,
-  TrendingDown,
-  TrendingUp,
   Zap,
 } from "lucide-react";
 import { pageTransitionVariants, staggerParentVariants, staggerChildVariants } from "@/lib/animations";
-import { useThreats } from "@/lib/queries/useThreats";
+import { useThreats, useUpdateThreat } from "@/lib/queries/useThreats";
 import { useDevices } from "@/lib/queries/useDevices";
 import { useEnvironmentStore } from "@/lib/stores/environmentStore";
 import type { AlertaStatus } from "@/lib/types/database";
@@ -34,10 +32,10 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 const DELIVERY_CHANNELS = [
-  { name: "Alerta API", status: "healthy", latency: "12ms", icon: Activity },
-  { name: "Push / FCM", status: "healthy", latency: "340ms", icon: Bell },
-  { name: "Email / Resend", status: "degraded", latency: "1.2s", icon: Zap },
-  { name: "Solana Memo", status: "healthy", latency: "28ms", icon: ShieldAlert },
+  { name: "Alerta API", icon: Activity },
+  { name: "Push / FCM", icon: Bell },
+  { name: "Email / Resend", icon: Zap },
+  { name: "Solana Memo", icon: ShieldAlert },
 ];
 
 export default function AlertaPage() {
@@ -47,6 +45,7 @@ export default function AlertaPage() {
   const primaryDeviceId = devices[0]?.id ?? null;
   const { data: threats = [] } = useThreats(primaryDeviceId, 100);
   const { config } = useEnvironmentStore();
+  const { mutate: updateThreat } = useUpdateThreat(primaryDeviceId);
 
   const filteredThreats = threats.filter((t) =>
     activeFilter === "all" ? true : t.alerta_status === activeFilter
@@ -112,10 +111,10 @@ export default function AlertaPage() {
         animate="animate"
       >
         {[
-          { label: `Open ${config.threatPlural}`, value: openCount, icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20", trend: "+2", trendUp: true },
-          { label: "Acknowledged", value: ackCount, icon: Bell, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", trend: "-1", trendUp: false },
-          { label: "Resolved Today", value: closedCount || 12, icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", trend: "+5", trendUp: true },
-          { label: "Avg Response", value: "2:34", icon: Clock, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20", trend: "-12s", trendUp: false },
+          { label: `Open ${config.threatPlural}`, value: openCount, icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
+          { label: "Acknowledged", value: ackCount, icon: Bell, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+          { label: "Resolved", value: closedCount, icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+          { label: "Total Events", value: threats.length, icon: Clock, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
         ].map((stat, index) => (
           <motion.div
             key={index}
@@ -125,10 +124,6 @@ export default function AlertaPage() {
             <stat.icon className={`h-8 w-8 mb-3 ${stat.color}`} />
             <p className="text-2xl font-bold text-white font-mono">{stat.value}</p>
             <p className="text-[9px] font-semibold uppercase tracking-widest text-text-muted mt-1">{stat.label}</p>
-            <div className={`flex items-center gap-1 mt-2 text-[9px] font-bold ${stat.trendUp ? "text-emerald-400" : "text-red-400"}`}>
-              {stat.trendUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-              {stat.trend} vs yesterday
-            </div>
           </motion.div>
         ))}
       </motion.div>
@@ -145,14 +140,14 @@ export default function AlertaPage() {
           </motion.button>
         </div>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-          {DELIVERY_CHANNELS.map(({ name, status, latency, icon: Icon }) => (
-            <div key={name} className={`rounded-xl p-3 border flex flex-col gap-2 ${status === "healthy" ? "bg-emerald-500/5 border-emerald-500/20" : "bg-amber-500/5 border-amber-500/20"}`}>
+          {DELIVERY_CHANNELS.map(({ name, icon: Icon }) => (
+            <div key={name} className="rounded-xl p-3 border flex flex-col gap-2 bg-emerald-500/5 border-emerald-500/20">
               <div className="flex items-center justify-between">
-                <Icon size={14} className={status === "healthy" ? "text-emerald-400" : "text-amber-400"} />
-                <span className={`w-1.5 h-1.5 rounded-full ${status === "healthy" ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
+                <Icon size={14} className="text-emerald-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               </div>
               <p className="text-[10px] font-bold text-white">{name}</p>
-              <p className="text-[9px] font-mono text-text-muted">{latency}</p>
+              <p className="text-[9px] font-mono text-text-muted">Active</p>
             </div>
           ))}
         </div>
@@ -278,15 +273,27 @@ export default function AlertaPage() {
                         <div className="flex gap-2 pt-1">
                           <motion.button
                             whileTap={{ scale: 0.95 }}
-                            className="px-4 py-2 rounded-lg text-xs font-bold uppercase border border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors"
+                            onClick={() => updateThreat({ threatId: threat.id, updates: { alerta_status: 'ack' } })}
+                            disabled={threat.alerta_status === 'ack'}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase border transition-colors ${
+                              threat.alerta_status === 'ack'
+                                ? "border-amber-400/10 bg-amber-400/5 text-amber-400/50 cursor-not-allowed"
+                                : "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20"
+                            }`}
                           >
-                            Acknowledge
+                            {threat.alerta_status === 'ack' ? 'Acknowledged' : 'Acknowledge'}
                           </motion.button>
                           <motion.button
                             whileTap={{ scale: 0.95 }}
-                            className="px-4 py-2 rounded-lg text-xs font-bold uppercase border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20 transition-colors"
+                            onClick={() => updateThreat({ threatId: threat.id, updates: { alerta_status: 'closed' } })}
+                            disabled={threat.alerta_status === 'closed'}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase border transition-colors ${
+                              threat.alerta_status === 'closed'
+                                ? "border-emerald-400/10 bg-emerald-400/5 text-emerald-400/50 cursor-not-allowed"
+                                : "border-emerald-400/30 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20"
+                            }`}
                           >
-                            Resolve
+                            {threat.alerta_status === 'closed' ? 'Resolved' : 'Resolve'}
                           </motion.button>
                         </div>
                       </div>
