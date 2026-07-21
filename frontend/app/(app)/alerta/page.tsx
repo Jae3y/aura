@@ -58,12 +58,19 @@ export default function AlertaPage() {
   const total = threats.length || 1;
   const ackRate = Math.round((ackCount + closedCount) / total * 100);
 
-  // Severity distribution (mock)
+  const sevCounts = threats.reduce(
+    (acc, t) => {
+      acc[t.severity] = (acc[t.severity] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+  const sevTotal = threats.length || 1;
   const sevDist = [
-    { label: "Critical", pct: 18, color: "bg-red-500" },
-    { label: "High", pct: 35, color: "bg-orange-500" },
-    { label: "Medium", pct: 29, color: "bg-amber-500" },
-    { label: "Low", pct: 18, color: "bg-emerald-500" },
+    { label: "Critical", pct: Math.round(((sevCounts.critical ?? 0) / sevTotal) * 100), color: "bg-red-500" },
+    { label: "High", pct: Math.round(((sevCounts.high ?? 0) / sevTotal) * 100), color: "bg-orange-500" },
+    { label: "Medium", pct: Math.round(((sevCounts.medium ?? 0) / sevTotal) * 100), color: "bg-amber-500" },
+    { label: "Low", pct: Math.round(((sevCounts.low ?? 0) / sevTotal) * 100), color: "bg-emerald-500" },
   ];
 
   return (
