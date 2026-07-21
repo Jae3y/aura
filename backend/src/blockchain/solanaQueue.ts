@@ -132,7 +132,7 @@ async function loop(): Promise<void> {
       }
     } catch (err) {
       const msg = (err as Error).message ?? '';
-      if (msg.includes('solana_outbox') && msg.includes('could not be found')) {
+      if (msg.includes('solana_outbox') && msg.includes('Could not find')) {
         if (!outboxMissingLogged) {
           console.warn(
             '[Solana Queue] solana_outbox table not found — queue paused. ' +

@@ -10,7 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  ExternalLink,
+  FileText,
   Filter,
   RefreshCw,
   ShieldAlert,
@@ -18,13 +18,26 @@ import {
 } from "lucide-react";
 import { pageTransitionVariants, staggerParentVariants, staggerChildVariants } from "@/lib/animations";
 import { useThreats, useUpdateThreat } from "@/lib/queries/useThreats";
+import { useReports } from "@/lib/queries/useReports";
 import { useDevices } from "@/lib/queries/useDevices";
 import { useEnvironmentStore } from "@/lib/stores/environmentStore";
-import type { AlertaStatus } from "@/lib/types/database";
+import type { AlertaStatus, MonthlyReport, ThreatEvent } from "@/lib/types/database";
 import { SolanaExplorerBadge } from "@/components/blockchain/SolanaExplorerBadge";
 import { useRealtimeStore } from "@/lib/stores/realtimeStore";
 
 type Filter = "all" | AlertaStatus;
+
+type NotificationItem = {
+  id: string;
+  type: "threat" | "report";
+  title: string;
+  subtitle: string;
+  status: AlertaStatus;
+  severity: string;
+  occurred_at: string;
+  threat?: ThreatEvent;
+  report?: MonthlyReport;
+};
 
 const SEVERITY_COLORS: Record<string, string> = {
   open: "text-red-400 bg-red-500/10 border-red-500/30",
@@ -44,12 +57,12 @@ export default function AlertaPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const { data: devices = [] } = useDevices();
   const primaryDeviceId = devices[0]?.id ?? null;
-  const { data: threats = [] } = useThreats(primaryDeviceId, 100);
+  const { data: threats = [], refetch } = useThreats(primaryDeviceId, 100);
+  const { data: reports = [] } = useReports(primaryDeviceId);
   const { config } = useEnvironmentStore();
-  const { mutate: updateThreat } = useUpdateThreat(primaryDeviceId);
+  const { mutate: updateThreat, isPending } = useUpdateThreat(primaryDeviceId);
   const realtimeThreats = useRealtimeStore((s) => s.recentThreats);
 
-  // Merge: start with queried threats, overlay real-time updates, deduplicate by id
   const allThreats = (() => {
     const map = new Map<string, (typeof threats)[number]>();
     for (const t of threats) map.set(t.id, t);
@@ -59,24 +72,56 @@ export default function AlertaPage() {
     );
   })();
 
-  const filteredThreats = allThreats.filter((t) =>
-    activeFilter === "all" ? true : t.alerta_status === activeFilter
+  const allNotifications: NotificationItem[] = (() => {
+    const items: NotificationItem[] = [];
+    for (const t of allThreats) {
+      items.push({
+        id: t.id,
+        type: "threat",
+        title: t.event_type.replace(/_/g, " ").toUpperCase(),
+        subtitle: `${config.device} ${t.device_id} · ${new Date(t.occurred_at).toLocaleString()}`,
+        status: t.alerta_status,
+        severity: t.severity,
+        occurred_at: t.occurred_at,
+        threat: t,
+      });
+    }
+    for (const r of reports) {
+      const status: AlertaStatus = r.alerta_ack_rate >= 100 ? "closed" : r.alerta_ack_rate > 0 ? "ack" : "open";
+      items.push({
+        id: `report-${r.id}`,
+        type: "report",
+        title: `Monthly Risk Audit — ${r.report_month}`,
+        subtitle: `Health: ${r.aura_health_score}/100 · Threats: ${r.total_threats} · Surges: ${r.surges_blocked}`,
+        status,
+        severity: r.aura_health_score >= 80 ? "low" : r.aura_health_score >= 50 ? "medium" : "critical",
+        occurred_at: r.generated_at,
+        report: r,
+      });
+    }
+    return items.sort(
+      (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+    );
+  })();
+
+  const filteredNotifications = allNotifications.filter((n) =>
+    activeFilter === "all" ? true : n.status === activeFilter
   );
 
-  const openCount = allThreats.filter((t) => t.alerta_status === "open").length;
-  const ackCount = allThreats.filter((t) => t.alerta_status === "ack").length;
-  const closedCount = allThreats.filter((t) => t.alerta_status === "closed").length;
-  const total = allThreats.length || 1;
+  const openCount = allNotifications.filter((n) => n.status === "open").length;
+  const ackCount = allNotifications.filter((n) => n.status === "ack").length;
+  const closedCount = allNotifications.filter((n) => n.status === "closed").length;
+  const total = allNotifications.length || 1;
   const ackRate = Math.round((ackCount + closedCount) / total * 100);
 
-  const sevCounts = allThreats.reduce(
-    (acc, t) => {
-      acc[t.severity] = (acc[t.severity] ?? 0) + 1;
+  const sevCounts = allNotifications.reduce(
+    (acc, n) => {
+      acc[n.severity] = (acc[n.severity] ?? 0) + 1;
       return acc;
     },
     {} as Record<string, number>
   );
-  const sevTotal = allThreats.length || 1;
+  const sevTotal = allNotifications.length || 1;
   const sevDist = [
     { label: "Critical", pct: Math.round(((sevCounts.critical ?? 0) / sevTotal) * 100), color: "bg-red-500" },
     { label: "High", pct: Math.round(((sevCounts.high ?? 0) / sevTotal) * 100), color: "bg-orange-500" },
@@ -126,7 +171,7 @@ export default function AlertaPage() {
           { label: `Open ${config.threatPlural}`, value: openCount, icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
           { label: "Acknowledged", value: ackCount, icon: Bell, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
           { label: "Resolved", value: closedCount, icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-          { label: "Total Events", value: allThreats.length, icon: Clock, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
+          { label: "Total Events", value: allNotifications.length, icon: Clock, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
         ].map((stat, index) => (
           <motion.div
             key={index}
@@ -146,6 +191,7 @@ export default function AlertaPage() {
           <h3 className="text-xs font-bold text-text-muted tracking-[0.2em] uppercase">Delivery Health</h3>
           <motion.button
             whileTap={{ scale: 0.95 }}
+            onClick={() => refetch()}
             className="flex items-center gap-1.5 text-[10px] text-accent-cyan font-bold uppercase tracking-widest"
           >
             <RefreshCw size={10} /> Refresh
@@ -206,7 +252,7 @@ export default function AlertaPage() {
                 : "bg-white/5 border-white/10 text-text-secondary hover:bg-white/10"
             }`}
           >
-            {f === "all" ? `All (${allThreats.length})` : `${f} (${allThreats.filter((t) => t.alerta_status === f).length})`}
+            {f === "all" ? `All (${allNotifications.length})` : `${f} (${allNotifications.filter((n) => n.status === f).length})`}
           </button>
         ))}
       </div>
@@ -214,12 +260,13 @@ export default function AlertaPage() {
       {/* ── Notification Cards ──────────────────────────────────────── */}
       <section className="space-y-3">
         <AnimatePresence mode="popLayout">
-          {filteredThreats.map((threat, index) => {
-            const isExpanded = expandedId === threat.id;
-            const statusClass = SEVERITY_COLORS[threat.alerta_status ?? "open"];
+          {filteredNotifications.map((item, index) => {
+            const isExpanded = expandedId === item.id;
+            const statusClass = SEVERITY_COLORS[item.status ?? "open"];
+            const isReport = item.type === "report";
             return (
               <motion.div
-                key={threat.id}
+                key={item.id}
                 layout
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -229,29 +276,36 @@ export default function AlertaPage() {
               >
                 {/* Card Header — always visible */}
                 <button
-                  onClick={() => setExpandedId(isExpanded ? null : threat.id)}
+                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
                   className="w-full text-left p-5"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
                       <div className={`mt-0.5 rounded-lg p-2 border ${statusClass}`}>
-                        <AlertTriangle className={`h-4 w-4 ${statusClass.split(" ")[0]}`} />
+                        {isReport
+                          ? <FileText className={`h-4 w-4 ${statusClass.split(" ")[0]}`} />
+                          : <AlertTriangle className={`h-4 w-4 ${statusClass.split(" ")[0]}`} />}
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-white">
-                          {threat.event_type.replace(/_/g, " ").toUpperCase()}
+                          {item.title}
                         </h3>
                         <p className="text-xs text-text-muted mt-1">
-                          {config.device} {threat.device_id} · {new Date(threat.occurred_at).toLocaleString()}
+                          {item.subtitle}
                         </p>
-                        {threat.action_taken && (
-                          <p className="text-xs text-text-secondary mt-1 line-clamp-1">{threat.action_taken}</p>
+                        {item.threat?.action_taken && (
+                          <p className="text-xs text-text-secondary mt-1 line-clamp-1">{item.threat.action_taken}</p>
+                        )}
+                        {isReport && (
+                          <p className="text-xs text-text-secondary mt-1 line-clamp-1">
+                            Ack rate: {item.report?.alerta_ack_rate}% · Alerts sent: {item.report?.alerta_alerts_count}
+                          </p>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest border ${statusClass}`}>
-                        {threat.alerta_status}
+                        {item.status}
                       </span>
                       {isExpanded
                         ? <ChevronUp size={14} className="text-text-muted" />
@@ -270,44 +324,79 @@ export default function AlertaPage() {
                       className="overflow-hidden"
                     >
                       <div className="px-5 pb-5 pt-1 space-y-4 border-t border-white/5">
-                        {threat.alerta_alert_id && (
+                        {item.threat?.alerta_alert_id && (
                           <div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">Alerta ID</p>
-                            <p className="text-xs font-mono text-text-secondary">{threat.alerta_alert_id}</p>
+                            <p className="text-xs font-mono text-text-secondary">{item.threat.alerta_alert_id}</p>
                           </div>
                         )}
-                        {threat.solana_signature && (
+                        {item.threat?.solana_signature && (
                           <div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1.5">Solana Proof</p>
-                            <SolanaExplorerBadge signature={threat.solana_signature} slot={threat.solana_slot} confirmed={threat.solana_confirmed} />
+                            <SolanaExplorerBadge signature={item.threat.solana_signature} slot={item.threat.solana_slot} confirmed={item.threat.solana_confirmed} />
                           </div>
                         )}
-                        <div className="flex gap-2 pt-1">
-                          <motion.button
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => updateThreat({ threatId: threat.id, updates: { alerta_status: 'ack' } })}
-                            disabled={threat.alerta_status === 'ack'}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase border transition-colors ${
-                              threat.alerta_status === 'ack'
-                                ? "border-amber-400/10 bg-amber-400/5 text-amber-400/50 cursor-not-allowed"
-                                : "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20"
-                            }`}
-                          >
-                            {threat.alerta_status === 'ack' ? 'Acknowledged' : 'Acknowledge'}
-                          </motion.button>
-                          <motion.button
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => updateThreat({ threatId: threat.id, updates: { alerta_status: 'closed' } })}
-                            disabled={threat.alerta_status === 'closed'}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase border transition-colors ${
-                              threat.alerta_status === 'closed'
-                                ? "border-emerald-400/10 bg-emerald-400/5 text-emerald-400/50 cursor-not-allowed"
-                                : "border-emerald-400/30 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20"
-                            }`}
-                          >
-                            {threat.alerta_status === 'closed' ? 'Resolved' : 'Resolve'}
-                          </motion.button>
-                        </div>
+                        {isReport && item.report && (
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">Health Score</p>
+                              <p className="font-mono text-white">{item.report.aura_health_score}/100</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">Total Threats</p>
+                              <p className="font-mono text-white">{item.report.total_threats}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">Surges Blocked</p>
+                              <p className="font-mono text-white">{item.report.surges_blocked}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">Solana Events</p>
+                              <p className="font-mono text-white">{item.report.solana_events_logged}</p>
+                            </div>
+                            {item.report.pdf_url && (
+                              <div className="col-span-2">
+                                <a href={item.report.pdf_url} target="_blank" rel="noopener noreferrer" className="text-accent-cyan hover:underline">
+                                  View PDF Report
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {item.threat && (
+                          <div className="flex gap-2 pt-1">
+                            <motion.button
+                              whileTap={{ scale: 0.95 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateThreat({ threatId: item.threat!.id, updates: { alerta_status: 'ack' } });
+                              }}
+                              disabled={item.threat.alerta_status === 'ack' || isPending}
+                              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase border transition-colors ${
+                                item.threat.alerta_status === 'ack'
+                                  ? "border-amber-400/10 bg-amber-400/5 text-amber-400/50 cursor-not-allowed"
+                                  : "border-amber-400/30 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20"
+                              }`}
+                            >
+                              {item.threat.alerta_status === 'ack' ? 'Acknowledged' : 'Acknowledge'}
+                            </motion.button>
+                            <motion.button
+                              whileTap={{ scale: 0.95 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateThreat({ threatId: item.threat!.id, updates: { alerta_status: 'closed' } });
+                              }}
+                              disabled={item.threat.alerta_status === 'closed' || isPending}
+                              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase border transition-colors ${
+                                item.threat.alerta_status === 'closed'
+                                  ? "border-emerald-400/10 bg-emerald-400/5 text-emerald-400/50 cursor-not-allowed"
+                                  : "border-emerald-400/30 bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20"
+                              }`}
+                            >
+                              {item.threat.alerta_status === 'closed' ? 'Resolved' : 'Resolve'}
+                            </motion.button>
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -318,7 +407,7 @@ export default function AlertaPage() {
         </AnimatePresence>
 
         {/* Empty State */}
-        {!filteredThreats.length && (
+        {!filteredNotifications.length && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -327,7 +416,7 @@ export default function AlertaPage() {
             <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-400 mb-4" />
             <h3 className="text-lg font-bold text-white">All Clear</h3>
             <p className="mt-2 text-text-secondary">
-              No {config.threatPlural.toLowerCase()} match your current filter
+              No {config.threatPlural.toLowerCase()} or audits match your current filter
             </p>
           </motion.div>
         )}

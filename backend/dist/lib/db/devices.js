@@ -6,6 +6,7 @@ exports.deleteDevice = deleteDevice;
 exports.getDevices = getDevices;
 exports.getDeviceById = getDeviceById;
 exports.getDeviceByToken = getDeviceByToken;
+exports.getDeviceByTokenAndUser = getDeviceByTokenAndUser;
 exports.updateDeviceStatus = updateDeviceStatus;
 exports.updateLastSeen = updateLastSeen;
 exports.updateNftMintAddress = updateNftMintAddress;
@@ -62,6 +63,17 @@ async function getDeviceByToken(id, token) {
         .select('*')
         .eq('id', id)
         .eq('device_token', token)
+        .maybeSingle();
+    if (error)
+        throw error;
+    return data;
+}
+async function getDeviceByTokenAndUser(token, userId) {
+    const { data, error } = await supabase_1.supabaseAdmin
+        .from('devices')
+        .select('*')
+        .eq('device_token', token)
+        .eq('user_id', userId)
         .maybeSingle();
     if (error)
         throw error;

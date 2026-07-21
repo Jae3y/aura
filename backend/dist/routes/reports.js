@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const zod_1 = require("zod");
+const config_1 = require("../config");
 const auth_1 = require("../middleware/auth");
 const errorHandler_1 = require("../middleware/errorHandler");
 const devices_1 = require("./devices");
@@ -10,6 +11,8 @@ const auraScore_1 = require("../services/auraScore");
 const pdf_1 = require("../services/pdf");
 const lisk_1 = require("../services/lisk");
 const reportStats_1 = require("../services/reportStats");
+const alerta_1 = require("../services/alerta");
+const telegram_1 = require("../services/telegram");
 const router = (0, express_1.Router)();
 router.use(auth_1.authMiddleware);
 const genSchema = zod_1.z.object({
@@ -67,7 +70,24 @@ router.post('/devices/:id/reports', async (req, res, next) => {
         // Monthly-only Lisk audit — runs AFTER the PDF exists.
         await (0, lisk_1.writeMonthlyAudit)(report);
         const final = await (0, monthly_reports_1.getReportById)(report.id);
+        // Respond immediately — Alerta runs in background (5-min retry loop).
         res.status(201).json({ report: final });
+        // Fire Alerta notification after response is sent.
+        (0, alerta_1.sendAlert)({
+            channelRef: config_1.config.ALERTA_CHANNEL_REF,
+            title: `📋 Monthly Risk Audit — ${device.name}`,
+            message: `AURA monthly audit for ${report_month} is complete.\n` +
+                `Device: ${device.name}\n` +
+                `Location: ${device.location_label ?? 'Main Node'}\n` +
+                `Health Score: ${health}/100\n` +
+                `Threats: ${stats.total_threats} | Surges: ${stats.surges_blocked}\n` +
+                `\n📄 PDF Report:\n${pdfUrl ?? 'Generating…'}`,
+            severity: 'Info',
+        }).catch((e) => console.error('Report Alerta dispatch failed:', e));
+        // Send the actual PDF file to Telegram via Bot API.
+        if (pdfUrl) {
+            (0, telegram_1.sendDocument)(pdfUrl, `📋 ${device.name} — ${report_month} Audit Report\nHealth: ${health}/100`, `${device.name}_${report_month}.pdf`).catch((e) => console.error('Telegram PDF send failed:', e));
+        }
     }
     catch (err) {
         next(err);

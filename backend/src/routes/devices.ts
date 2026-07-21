@@ -20,6 +20,7 @@ import { emitToDevice } from '../socket';
 import { SOCKET_EVENTS } from '../socket/events';
 import { insertEvent, updateAlertaStatus } from '../lib/db/threat_events';
 import { sendAlert } from '../services/alerta';
+import { sendDocument as sendTelegramDocument } from '../services/telegram';
 import { upsertReport, getReportById } from '../lib/db/monthly_reports';
 import { writeMonthlyAudit } from '../services/lisk';
 
@@ -341,6 +342,15 @@ router.post('/devices/:id/simulate-audit', async (req, res, next) => {
             (pdfUrl ? `\nPDF Report: ${pdfUrl}` : ''),
           severity: 'Info',
         }).catch(e => console.error('Audit Alerta dispatch failed in background:', e));
+
+        // Send the actual PDF file to Telegram channel via Bot API.
+        if (pdfUrl) {
+          sendTelegramDocument(
+            pdfUrl,
+            `📋 ${device.name} — ${monthStr} Audit Report\nHealth: ${report.aura_health_score}/100`,
+            `${device.name}_${monthStr}.pdf`
+          ).catch(e => console.error('Telegram PDF send failed:', e));
+        }
       } catch (e) {
         console.error('Audit Alerta dispatch failed:', e);
       }

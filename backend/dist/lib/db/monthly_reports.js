@@ -5,6 +5,7 @@ exports.getReportsByDevice = getReportsByDevice;
 exports.getReportByMonth = getReportByMonth;
 exports.getReportById = getReportById;
 exports.updateLiskTx = updateLiskTx;
+exports.updatePdfUrl = updatePdfUrl;
 const supabase_1 = require("../supabase");
 async function upsertReport(report) {
     const { data, error } = await supabase_1.supabaseAdmin
@@ -51,6 +52,14 @@ async function updateLiskTx(id, txId) {
     const { error } = await supabase_1.supabaseAdmin
         .from('monthly_reports')
         .update({ lisk_tx_id: txId, lisk_confirmed: true })
+        .eq('id', id);
+    if (error)
+        throw error;
+}
+async function updatePdfUrl(id, pdfUrl) {
+    const { error } = await supabase_1.supabaseAdmin
+        .from('monthly_reports')
+        .update({ pdf_url: pdfUrl })
         .eq('id', id);
     if (error)
         throw error;

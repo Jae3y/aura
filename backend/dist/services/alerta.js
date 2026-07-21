@@ -61,7 +61,7 @@ let http = null;
 function client() {
     if (!http) {
         http = axios_1.default.create({
-            baseURL: config_1.config.ALERTA_BASE_URL,
+            baseURL: config_1.config.ALERTA_BASE_URL.replace(/\/+$/, ''),
             headers: {
                 'x-api-key': config_1.config.ALERTA_API_KEY,
                 'x-api-secret': config_1.config.ALERTA_API_SECRET,
@@ -79,7 +79,14 @@ function client() {
 const MAX_RETRY_WINDOW_MS = 5 * 60 * 1000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function postNotification(notification) {
+    console.log('[Alerta Service] Sending notification:', {
+        channelRef: notification.channelRef,
+        title: notification.title,
+        severity: notification.severity,
+        url: `${config_1.config.ALERTA_BASE_URL}/telegram/send`,
+    });
     const res = await client().post('/telegram/send', notification);
+    console.log('[Alerta Service] Response:', { status: res.status, data: res.data });
     return res.data;
 }
 async function sendAlert(notification) {
@@ -92,6 +99,12 @@ async function sendAlert(notification) {
         }
         catch (err) {
             lastError = err;
+            const axiosErr = err;
+            console.error('[Alerta Service] POST failed:', {
+                message: axiosErr?.message,
+                status: axiosErr?.response?.status,
+                data: axiosErr?.response?.data,
+            });
             if (Date.now() - start + delay >= MAX_RETRY_WINDOW_MS)
                 break;
             await sleep(delay);
@@ -102,6 +115,7 @@ async function sendAlert(notification) {
         tags: { subsystem: 'alerta' },
         extra: { title: notification.title },
     });
+    console.error('[Alerta Service] Failed to send notification:', lastError);
     return null;
 }
 // ---------------------------------------------------------------------------

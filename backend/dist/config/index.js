@@ -19,14 +19,15 @@ const devFallbacks = {
     HIVEMQ_URL: 'mqtt://localhost:1883',
     HIVEMQ_USER: 'dev-mqtt-user',
     HIVEMQ_PASS: 'dev-mqtt-pass',
-    SOLANA_KEYPAIR: 'dev-solana-keypair',
+    SOLANA_KEYPAIR: process.env.SOLANA_PRIVATE_KEY || 'dev-solana-keypair',
     ALERTA_API_KEY: 'dev-alerta-key',
     ALERTA_API_SECRET: 'dev-alerta-secret',
-    ALERTA_CHANNEL_REF: 'dev-alerta-channel',
+    ALERTA_CHANNEL_REF: 'TG_ALT_FILYOOMRE4MDCNI2',
+    LISK_RPC_URL: process.env.EVM_RPC_URL ?? '', // allow root .env EVM_RPC_URL
     FCM_PROJECT_ID: 'dev-fcm-project',
     RESEND_API_KEY: 'dev-resend-key',
     JWT_SECRET: 'dev-jwt-secret',
-    MOCK_INTEGRATIONS: 'true',
+    MOCK_INTEGRATIONS: process.env.SOLANA_PRIVATE_KEY ? 'false' : 'true',
 };
 if (!isProduction) {
     for (const [key, value] of Object.entries(devFallbacks)) {
@@ -64,11 +65,20 @@ const envSchema = zod_1.z.object({
     SENTRY_DSN: zod_1.z.string().optional(),
     JWT_SECRET: zod_1.z.string().min(1),
     FRONTEND_URL: zod_1.z.string().url().default('http://localhost:3000'),
+    PUBLIC_URL: zod_1.z.string().url().default('http://localhost:3001'),
+    TELEGRAM_BOT_TOKEN: zod_1.z.string().optional(),
+    TELEGRAM_CHAT_ID: zod_1.z.string().optional(),
 });
 const parsed = envSchema.safeParse(rawEnv);
 if (!parsed.success) {
     // eslint-disable-next-line no-console
     console.error('❌ Invalid environment configuration:', parsed.error.flatten().fieldErrors);
+    process.exit(1);
+}
+if (parsed.data.NODE_ENV === 'production' && parsed.data.MOCK_INTEGRATIONS) {
+    console.error('❌ FATAL: MOCK_INTEGRATIONS=true in production. ' +
+        'This would disable MQTT and allow silent integration failures. ' +
+        'Set MOCK_INTEGRATIONS=false or remove it from your environment.');
     process.exit(1);
 }
 exports.config = parsed.data;

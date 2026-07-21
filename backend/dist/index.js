@@ -64,16 +64,18 @@ app.use((0, cors_1.default)({
     credentials: true,
 }));
 // Alerta webhook needs the raw body for HMAC verification.
-app.use('/alerta/webhook', express_1.default.json({
+app.use('/alerta/webhook', rateLimit_1.webhookLimiter, express_1.default.json({
     verify: (req, _res, buf) => {
         req.rawBody = buf;
     },
 }));
 app.use(express_1.default.json({ limit: '2mb' }));
 app.use(rateLimit_1.defaultLimiter);
-app.get('/health', (_req, res) => {
+const healthHandler = (_req, res) => {
     res.json({ status: 'ok', service: 'aura-backend', ts: Date.now() });
-});
+};
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 // ---------------------------------------------------------------------------
 // Routes (mounted as each module is implemented).
 // ---------------------------------------------------------------------------
@@ -90,6 +92,11 @@ const alerta_1 = __importDefault(require("./routes/alerta"));
 const reports_1 = __importDefault(require("./routes/reports"));
 const blockchain_1 = __importDefault(require("./routes/blockchain"));
 app.use('/auth', auth_1.default);
+// API-prefixed public routes must be mounted before catch-all "/" routers,
+// otherwise protected routers like devicesRouter intercept /api/auth/* first.
+app.use('/api/auth', auth_1.default);
+app.use('/api/alerta', alerta_1.default);
+app.use('/api/blockchain', blockchain_1.default);
 app.use('/', devices_1.default);
 app.use('/', control_1.default);
 app.use('/', zones_1.default);
@@ -101,6 +108,15 @@ app.use('/', notifications_1.default);
 app.use('/alerta', alerta_1.default);
 app.use('/', reports_1.default);
 app.use('/blockchain', blockchain_1.default);
+app.use('/api', devices_1.default);
+app.use('/api', control_1.default);
+app.use('/api', zones_1.default);
+app.use('/api', automations_1.default);
+app.use('/api', sensor_1.default);
+app.use('/api', threats_1.default);
+app.use('/api', voice_1.default);
+app.use('/api', notifications_1.default);
+app.use('/api', reports_1.default);
 app.use(Sentry.Handlers.errorHandler());
 app.use(errorHandler_1.notFoundHandler);
 app.use(errorHandler_1.errorHandler);
@@ -110,16 +126,33 @@ app.use(errorHandler_1.errorHandler);
 const socket_1 = require("./socket");
 const mqtt_1 = require("./services/mqtt");
 const solanaQueue_1 = require("./blockchain/solanaQueue");
+const solana_1 = require("./services/solana");
 (0, socket_1.initSocket)(server);
+// Solana queue always runs — we have valid RPC + keypair configured.
+// Only MQTT is gated by MOCK_INTEGRATIONS (no local broker in dev).
+(0, solanaQueue_1.startSolanaQueue)();
+// Initialize Solana client and ensure the wallet has Devnet SOL.
+(async () => {
+    try {
+        (0, solana_1.initSolanaClient)();
+        const pubkey = (0, solana_1.getWalletPublicKey)();
+        // eslint-disable-next-line no-console
+        console.log(`Solana wallet: ${pubkey} (${config_1.config.SOLANA_RPC_URL})`);
+        // Try to airdrop if needed (non-blocking; server starts regardless).
+        await (0, solana_1.tryAutoAirdrop)();
+    }
+    catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('Solana client init failed:', err.message);
+    }
+})();
 if (config_1.config.MOCK_INTEGRATIONS) {
-    // eslint-disable-next-line no-console
-    console.log('Mock integrations enabled; MQTT and Solana workers are disabled.');
+    console.warn('⚠️  Mock integrations enabled — MQTT, Solana writes, and Alerta notifications are disabled. ' +
+        'Do NOT run this configuration in production.');
 }
 else {
-    (0, solanaQueue_1.startSolanaQueue)();
     (0, mqtt_1.connectMQTT)().catch((err) => {
         Sentry.captureException(err);
-        // eslint-disable-next-line no-console
         console.error('MQTT initial connection failed:', err);
     });
 }

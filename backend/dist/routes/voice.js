@@ -10,7 +10,7 @@ const solanaQueue_1 = require("../blockchain/solanaQueue");
 const events_1 = require("../blockchain/events");
 const router = (0, express_1.Router)();
 router.use(auth_1.authMiddleware);
-const CONFIDENCE_THRESHOLD = 0.7;
+const CONFIDENCE_THRESHOLD = 0.75;
 const commandSchema = zod_1.z.object({
     device_id: zod_1.z.string().uuid(),
     raw_command: zod_1.z.string().min(1),
@@ -34,13 +34,11 @@ router.post('/voice/command', async (req, res, next) => {
             was_executed: false,
         });
         if (body.confidence_score > CONFIDENCE_THRESHOLD && body.action_triggered) {
-            if (body.relay_channel) {
-                await (0, mqtt_1.publishCommand)(body.device_id, {
-                    command: body.action_triggered,
-                    channel: body.relay_channel,
-                    requestedBy: req.user.walletAddress ?? req.user.id,
-                });
-            }
+            await (0, mqtt_1.publishCommand)(body.device_id, {
+                command: body.action_triggered,
+                channel: body.relay_channel,
+                requestedBy: req.user.walletAddress ?? req.user.id,
+            });
             const updated = await (0, voice_commands_1.updateVoiceCommand)(cmd.id, {
                 was_executed: true,
                 execution_result: 'executed',

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { config } from '../config';
 import { authMiddleware } from '../middleware/auth';
 import { HttpError } from '../middleware/errorHandler';
 import { loadOwnedDevice } from './devices';
@@ -13,6 +14,7 @@ import { generateReportPdf } from '../services/pdf';
 import { writeMonthlyAudit } from '../services/lisk';
 import { computeMonthlyStats } from '../services/reportStats';
 import { sendAlert } from '../services/alerta';
+import { sendDocument as sendTelegramDocument } from '../services/telegram';
 
 const router = Router();
 router.use(authMiddleware);
@@ -83,7 +85,7 @@ router.post('/devices/:id/reports', async (req, res, next) => {
 
     // Fire Alerta notification after response is sent.
     sendAlert({
-      channelRef: '',
+      channelRef: config.ALERTA_CHANNEL_REF,
       title: `📋 Monthly Risk Audit — ${device.name}`,
       message:
         `AURA monthly audit for ${report_month} is complete.\n` +
@@ -91,9 +93,21 @@ router.post('/devices/:id/reports', async (req, res, next) => {
         `Location: ${device.location_label ?? 'Main Node'}\n` +
         `Health Score: ${health}/100\n` +
         `Threats: ${stats.total_threats} | Surges: ${stats.surges_blocked}\n` +
-        `PDF: ${pdfUrl ?? 'Generating…'}`,
+        `\n📄 PDF Report:\n${pdfUrl ?? 'Generating…'}`,
       severity: 'Info',
     }).catch((e) => console.error('Report Alerta dispatch failed:', e));
+
+    // Send the actual PDF file to Telegram via Bot API.
+    console.log('[Reports] Telegram check — pdfUrl:', pdfUrl ? pdfUrl.substring(0, 80) : 'NULL');
+    if (pdfUrl) {
+      sendTelegramDocument(
+        pdfUrl,
+        `📋 ${device.name} — ${report_month} Audit Report\nHealth: ${health}/100`,
+        `${device.name}_${report_month}.pdf`
+      ).catch((e) => console.error('Telegram PDF send failed:', e));
+    } else {
+      console.warn('[Reports] No PDF URL — skipping Telegram send');
+    }
   } catch (err) {
     next(err);
   }

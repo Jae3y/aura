@@ -40,67 +40,119 @@ const Sentry = __importStar(require("@sentry/node"));
 const solana_1 = require("../services/solana");
 const threat_events_1 = require("../lib/db/threat_events");
 const voice_commands_1 = require("../lib/db/voice_commands");
-const RETRY_DELAYS_MS = [1000, 2000, 4000]; // 3 retries, exponential back-off
-const queue = [];
+const solana_outbox_1 = require("../lib/db/solana_outbox");
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [1000, 2000, 4000];
 let running = false;
-function enqueueSolanaEvent(item) {
-    queue.push({ ...item, attempts: 0 });
+let outboxReady = false;
+let outboxMissingLogged = false;
+async function enqueueSolanaEvent(item) {
+    try {
+        await (0, solana_outbox_1.insertOutboxItem)({
+            table_name: item.table,
+            row_id: item.rowId,
+            event_name: item.eventName,
+            memo: item.memo,
+        });
+    }
+    catch (err) {
+        console.error('[Solana Queue] Failed to persist outbox item:', err.message);
+        Sentry.captureException(err, { tags: { subsystem: 'solana-outbox' } });
+    }
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function persistSuccess(item, signature, slot) {
-    if (item.table === 'threat_events') {
-        await (0, threat_events_1.updateSolanaSignature)(item.rowId, signature, slot);
+    if (item.table_name === 'threat_events') {
+        await (0, threat_events_1.updateSolanaSignature)(item.row_id, signature, slot);
     }
-    else if (item.table === 'voice_commands') {
-        await (0, voice_commands_1.updateVoiceSolanaSignature)(item.rowId, signature);
+    else if (item.table_name === 'voice_commands') {
+        await (0, voice_commands_1.updateVoiceSolanaSignature)(item.row_id, signature);
     }
 }
 async function persistFailure(item) {
-    if (item.table === 'threat_events') {
-        await (0, threat_events_1.setSolanaUnconfirmed)(item.rowId);
+    if (item.table_name === 'threat_events') {
+        await (0, threat_events_1.setSolanaUnconfirmed)(item.row_id);
     }
 }
-// Processes one item with up to 3 retries. On exhaustion sets the row
-// unconfirmed and captures exactly one Sentry error.
 async function processItem(item) {
     let lastError;
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
         try {
             const { signature, slot } = await (0, solana_1.writeEventToChain)({
-                eventName: item.eventName,
+                eventName: item.event_name,
                 memo: item.memo,
             });
             await persistSuccess(item, signature, slot);
+            await (0, solana_outbox_1.markComplete)(item.id);
             return;
         }
         catch (err) {
             lastError = err;
+            console.error(`[Solana Queue] Attempt ${attempt + 1}/${RETRY_DELAYS_MS.length + 1} failed for ${item.event_name}:`, err.message);
             if (attempt < RETRY_DELAYS_MS.length) {
                 await sleep(RETRY_DELAYS_MS[attempt]);
             }
         }
     }
-    await persistFailure(item);
-    Sentry.captureException(lastError, {
-        tags: { subsystem: 'solana-queue' },
-        extra: {
-            eventName: item.eventName,
-            table: item.table,
-            rowId: item.rowId,
-            deviceId: item.memo.deviceId,
-        },
-    });
+    const newAttempts = await (0, solana_outbox_1.incrementAttempts)(item.id);
+    if (newAttempts >= MAX_ATTEMPTS) {
+        await persistFailure(item);
+        await (0, solana_outbox_1.markFailed)(item.id);
+        console.error(`[Solana Queue] All retries exhausted for ${item.event_name} (${item.table_name}:${item.row_id})`);
+        Sentry.captureException(lastError, {
+            tags: { subsystem: 'solana-queue' },
+            extra: {
+                eventName: item.event_name,
+                table: item.table_name,
+                rowId: item.row_id,
+                deviceId: item.memo.deviceId,
+            },
+        });
+    }
+    else {
+        const { supabaseAdmin } = await Promise.resolve().then(() => __importStar(require('../lib/supabase')));
+        const { error } = await supabaseAdmin
+            .from('solana_outbox')
+            .update({ status: 'pending' })
+            .eq('id', item.id);
+        if (error)
+            console.error('[Solana Queue] Failed to reset status:', error.message);
+    }
 }
 async function loop() {
     running = true;
-    // eslint-disable-next-line no-constant-condition
     while (true) {
-        const item = queue.shift();
-        if (!item) {
-            await sleep(500);
-            continue;
+        try {
+            const items = await (0, solana_outbox_1.getPendingItems)(10);
+            outboxReady = true;
+            if (!outboxMissingLogged) {
+                outboxMissingLogged = true;
+                console.log('[Solana Queue] Outbox table connected');
+            }
+            if (items.length === 0) {
+                await sleep(1000);
+                continue;
+            }
+            for (const item of items) {
+                await (0, solana_outbox_1.markProcessing)(item.id);
+                await processItem(item);
+            }
         }
-        await processItem(item);
+        catch (err) {
+            const msg = err.message ?? '';
+            if (msg.includes('solana_outbox') && msg.includes('Could not find')) {
+                if (!outboxMissingLogged) {
+                    console.warn('[Solana Queue] solana_outbox table not found — queue paused. ' +
+                        'Run the migration in supabase/migrations/002_solana_outbox.sql to enable.');
+                    outboxMissingLogged = true;
+                }
+                await sleep(30_000);
+                continue;
+            }
+            console.error('[Solana Queue] Loop error:', msg);
+            Sentry.captureException(err, { tags: { subsystem: 'solana-queue-loop' } });
+            await sleep(2000);
+        }
     }
 }
 function startSolanaQueue() {
@@ -108,7 +160,8 @@ function startSolanaQueue() {
         return;
     void loop();
 }
-function _queueLength() {
-    return queue.length;
+async function _queueLength() {
+    const items = await (0, solana_outbox_1.getPendingItems)(1000);
+    return items.length;
 }
 //# sourceMappingURL=solanaQueue.js.map

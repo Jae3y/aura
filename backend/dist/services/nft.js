@@ -27,34 +27,35 @@ function getUmi() {
     return umi;
 }
 // Mints a Solana devnet NFT as the device-identity certificate.
-async function mintDeviceNFT(device, ownerWallet) {
+// `metadataUri` is an optional external URL for the JSON metadata.
+// Using a URL (instead of an inline data URI) keeps the transaction
+// within Solana's 1232-byte raw size limit.
+async function mintDeviceNFT(device, ownerWallet, metadataUri) {
     const client = getUmi();
     const mint = (0, umi_1.generateSigner)(client);
-    const attributes = [
-        { trait_type: 'deviceId', value: device.id },
-        { trait_type: 'owner', value: ownerWallet },
-        { trait_type: 'environment_type', value: device.environment_type },
-        { trait_type: 'location_label', value: device.location_label ?? 'n/a' },
-        { trait_type: 'deployDate', value: new Date().toISOString() },
-        { trait_type: 'firmware_version', value: device.firmware_version },
-    ];
-    const metadata = {
-        name: `AURA Unit - ${device.name}`,
-        symbol: 'AURA',
-        description: 'AURA device identity certificate',
-        attributes,
-    };
-    const result = await (0, mpl_token_metadata_1.createNft)(client, {
+    const { signature } = await (0, mpl_token_metadata_1.createNft)(client, {
         mint,
-        name: metadata.name,
-        symbol: metadata.symbol,
-        uri: `data:application/json,${encodeURIComponent(JSON.stringify(metadata))}`,
+        name: `AURA-${device.name}`.slice(0, 32),
+        symbol: 'AURA',
+        uri: metadataUri ||
+            `data:application/json,${encodeURIComponent(JSON.stringify({
+                name: `AURA-${device.name}`.slice(0, 32),
+                symbol: 'AURA',
+                description: 'AURA device identity certificate',
+                attributes: [
+                    { trait_type: 'deviceId', value: device.id },
+                    { trait_type: 'owner', value: ownerWallet },
+                    { trait_type: 'environment_type', value: device.environment_type },
+                    { trait_type: 'location_label', value: device.location_label ?? 'n/a' },
+                    { trait_type: 'firmware_version', value: device.firmware_version },
+                ],
+            }))}`,
         sellerFeeBasisPoints: (0, umi_1.percentAmount)(0),
         isCollection: false,
     }).sendAndConfirm(client);
     return {
         mintAddress: mint.publicKey.toString(),
-        signature: bs58_1.default.encode(result.signature),
+        signature,
     };
 }
 async function getNFTMetadata(mintAddress) {

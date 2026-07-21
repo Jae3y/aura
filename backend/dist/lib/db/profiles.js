@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getProfileById = getProfileById;
+exports.getProfileByWalletAddress = getProfileByWalletAddress;
 exports.upsertProfile = upsertProfile;
 exports.updateWalletAddress = updateWalletAddress;
 exports.updateFcmToken = updateFcmToken;
@@ -11,6 +12,16 @@ async function getProfileById(id) {
         .from('profiles')
         .select('*')
         .eq('id', id)
+        .maybeSingle();
+    if (error)
+        throw error;
+    return data;
+}
+async function getProfileByWalletAddress(walletAddress) {
+    const { data, error } = await supabase_1.supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('wallet_address', walletAddress)
         .maybeSingle();
     if (error)
         throw error;

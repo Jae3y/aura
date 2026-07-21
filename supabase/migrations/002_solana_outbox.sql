@@ -14,8 +14,5 @@ CREATE TABLE public.solana_outbox (
 CREATE INDEX idx_solana_outbox_pending ON public.solana_outbox (created_at)
   WHERE status = 'pending';
 
-ALTER TABLE public.solana_outbox ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Service role full access" ON public.solana_outbox
-  FOR ALL
-  USING (auth.role() = 'service_role');
+-- Only accessed by service-role backend client; RLS not needed.
+ALTER TABLE public.solana_outbox DISABLE ROW LEVEL SECURITY;

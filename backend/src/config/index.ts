@@ -73,6 +73,9 @@ const envSchema = z.object({
 
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
   PUBLIC_URL: z.string().url().default('http://localhost:3001'),
+
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_CHAT_ID: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(rawEnv);

@@ -73,12 +73,31 @@ async function sessionFor(addr) {
         throw new errorHandler_1.HttpError(401, 'Authentication failed');
     return data;
 }
+async function recoverWalletSession(addr) {
+    const profile = await (0, profiles_1.getProfileByWalletAddress)(addr);
+    if (!profile)
+        throw new errorHandler_1.HttpError(401, 'Authentication failed');
+    const { error } = await supabase_1.supabaseAdmin.auth.admin.updateUserById(profile.id, {
+        password: walletPassword(addr),
+    });
+    if (error)
+        throw error;
+    return sessionFor(addr);
+}
 async function authenticate(addr, sig, msg) {
     if (!verifyWalletSignature(addr, sig, msg)) {
         throw new errorHandler_1.HttpError(401, 'Invalid wallet signature');
     }
     await ensureUser(addr);
-    const data = await sessionFor(addr);
+    let data;
+    try {
+        data = await sessionFor(addr);
+    }
+    catch (error) {
+        if (!(error instanceof errorHandler_1.HttpError) || error.status !== 401)
+            throw error;
+        data = await recoverWalletSession(addr);
+    }
     await (0, profiles_1.upsertProfile)({
         id: data.user.id,
         email: walletEmail(addr),
@@ -90,7 +109,8 @@ router.post('/register', async (req, res, next) => {
     try {
         const { walletAddress, signature, message } = loginSchema.parse(req.body);
         const data = await authenticate(walletAddress, signature, message);
-        res.status(201).json({ session: data.session, user: data.user });
+        const profile = await (0, profiles_1.getProfileById)(data.user.id);
+        res.status(201).json({ session: data.session, user: data.user, profile });
     }
     catch (err) {
         next(err);
@@ -100,7 +120,8 @@ router.post('/login', async (req, res, next) => {
     try {
         const { walletAddress, signature, message } = loginSchema.parse(req.body);
         const data = await authenticate(walletAddress, signature, message);
-        res.json({ session: data.session, user: data.user });
+        const profile = await (0, profiles_1.getProfileById)(data.user.id);
+        res.json({ session: data.session, user: data.user, profile });
     }
     catch (err) {
         next(err);
