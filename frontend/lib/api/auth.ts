@@ -62,7 +62,8 @@ class AuthAPI {
     options: RequestInit = {}
   ): Promise<T> {
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const url = `${this.baseUrl}${endpoint}`;
+      const response = await fetch(url, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
@@ -81,6 +82,13 @@ class AuthAPI {
 
       return response.json();
     } catch (error) {
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        const hint = !this.baseUrl.startsWith('http')
+          ? ` The backend URL resolved to "${this.baseUrl}" which may not be reachable in production. ` +
+            'Set NEXT_PUBLIC_BACKEND_URL to your full backend URL (e.g. https://aura-backend.onrender.com).'
+          : ` Could not reach ${this.baseUrl}${endpoint}. Check that the backend is running and CORS is configured.`;
+        throw new Error(`Failed to connect to the server.${hint}`);
+      }
       Sentry.captureException(error);
       throw error;
     }

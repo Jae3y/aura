@@ -1,5 +1,7 @@
 // Environment configuration with validation
-export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+export const BACKEND_URL = rawBackendUrl || 'http://localhost:3001';
 
 export const config = {
   supabase: {
@@ -7,7 +9,7 @@ export const config = {
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   },
   backend: {
-    baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL || '/api',
+    baseUrl: rawBackendUrl || '/api',
     socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || BACKEND_URL,
   },
   solana: {
@@ -33,5 +35,13 @@ export function validateConfig() {
 
   if (missing.length > 0) {
     console.warn(`Missing environment variables: ${missing.join(', ')}`);
+  }
+
+  if (typeof window !== 'undefined' && !rawBackendUrl) {
+    console.warn(
+      '[AURA] NEXT_PUBLIC_BACKEND_URL is not set. ' +
+      'Auth requests will be routed through Next.js rewrites which only work in development. ' +
+      'Set this to your backend URL (e.g. https://aura-backend.onrender.com) for production.'
+    );
   }
 }

@@ -99,8 +99,14 @@ class APIClient {
       }
 
       // Network or other errors
+      const detail =
+        error instanceof TypeError && error.message === 'Failed to fetch'
+          ? !this.baseUrl.startsWith('http')
+            ? `Backend URL "${this.baseUrl}" is a relative path — set NEXT_PUBLIC_BACKEND_URL for production`
+            : `Cannot reach ${this.baseUrl}`
+          : String(error);
       const networkError = new APIError(
-        'Network request failed',
+        `Network request failed: ${detail}`,
         0,
         'NETWORK_ERROR'
       );
