@@ -5,8 +5,8 @@
   --color-foreground: #FFFFFF;
   
   --color-base: #050505;
-  --color-card: #0D0D0D;
-  --color-card-hover: #1A1A1A;
+  --color-card: #0A0A0B;
+  --color-card-hover: #121214;
   
   --color-accent-cyan: #06B6D4;
   --color-accent-teal: #14B8A6;
@@ -40,12 +40,13 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
   
   /* Custom scrollbars */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #27272A; border-radius: 10px; }
+  ::-webkit-scrollbar-track { background: #050505; }
+  ::-webkit-scrollbar-thumb { background: #27272A; border-radius: 0px; }
   ::-webkit-scrollbar-thumb:hover { background: #3F3F46; }
 }
 
@@ -78,56 +79,108 @@
       0deg,
       transparent,
       transparent 2px,
-      rgba(0,0,0,0.03) 2px,
-      rgba(0,0,0,0.03) 4px
+      rgba(0,0,0,0.12) 2px,
+      rgba(0,0,0,0.12) 4px
     );
     pointer-events: none;
-    z-index: 1;
+    z-index: 2;
+  }
+
+  /* Landing page noise overlay - GPU-safe (fixed, pointer-events-none) */
+  .landing-noise::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  /* Subtle cyan text gradient for display type */
+  .text-gradient-cyan {
+    background: linear-gradient(180deg, #FFFFFF 0%, rgba(6,182,212,0.7) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Tabular numbers for instrument data */
+  .num-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Industrial hazard warning stripes */
+  .bg-hazard-stripes {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgba(245, 158, 11, 0.15),
+      rgba(245, 158, 11, 0.15) 10px,
+      transparent 10px,
+      transparent 20px
+    );
   }
 }
 
 @layer components {
+  /* Industrial Brutalist Mechanical Panel Surface */
   .panel-surface {
-    background: linear-gradient(180deg, rgba(24, 24, 27, 0.92), rgba(9, 9, 11, 0.94));
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+    background: #0A0A0C;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
   }
 
   .panel-card {
-    background: rgba(13, 13, 13, 0.88);
+    background: #0D0D0E;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
   }
 
-  .section-label {
-    color: var(--color-accent-cyan);
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
+  /* Industrial LED Status Lights */
+  .led-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .led-green {
+    background-color: #22C55E;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.9);
+  }
+  .led-amber {
+    background-color: #F59E0B;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.9);
+  }
+  .led-red {
+    background-color: #EF4444;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 1);
+  }
+  .led-cyan {
+    background-color: #06B6D4;
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.9);
   }
 
-  /* Boot-up grid flicker animation */
-  @keyframes boot-flicker {
-    0%, 100% { opacity: 1; }
-    92% { opacity: 1; }
-    93% { opacity: 0.5; }
-    94% { opacity: 1; }
-    96% { opacity: 0.7; }
-    97% { opacity: 1; }
+  /* Tactical Grid Crosshairs */
+  .tactile-corner-tl::before {
+    content: '+';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    font-family: monospace;
+    font-size: 14px;
+    color: rgba(6, 182, 212, 0.4);
+    line-height: 1;
+    pointer-events: none;
   }
-  .boot-flicker {
-    animation: boot-flicker 4s ease infinite;
-  }
-
-  /* Glitch keyframes */
-  @keyframes glitch-clip-1 {
-    0%, 100% { clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%); transform: translate(-2px, 0); }
-    50% { clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%); transform: translate(2px, 0); }
-  }
-  @keyframes glitch-clip-2 {
-    0%, 100% { clip-path: polygon(0 55%, 100% 55%, 100% 75%, 0 75%); transform: translate(2px, 0); }
-    50% { clip-path: polygon(0 15%, 100% 15%, 100% 35%, 0 35%); transform: translate(-2px, 0); }
+  .tactile-corner-tr::after {
+    content: '+';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-family: monospace;
+    font-size: 14px;
+    color: rgba(6, 182, 212, 0.4);
+    line-height: 1;
+    pointer-events: none;
   }
 }
-

@@ -84,6 +84,10 @@ export function publishCommand(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!client || !client.connected) {
+      if (config.MOCK_INTEGRATIONS) {
+        resolve();
+        return;
+      }
       reject(new Error('MQTT client not connected'));
       return;
     }

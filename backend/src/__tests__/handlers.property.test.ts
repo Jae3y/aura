@@ -15,7 +15,36 @@ import fc from 'fast-check';
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockCaptureException = vi.fn();
+const {
+  mockCaptureException,
+  mockSendPush,
+  mockSendThreatAlert,
+  mockInsertEvent,
+  mockUpdateAlertaStatus,
+  mockInsertVoiceCommand,
+  mockUpdateVoiceCommand,
+  mockCreateNotification,
+  mockGetOwnerProfile,
+  mockEnqueueSolanaEvent,
+  mockSendAlert,
+  mockPublishCommand,
+  mockEmitToDevice,
+} = vi.hoisted(() => ({
+  mockCaptureException: vi.fn(),
+  mockSendPush: vi.fn(),
+  mockSendThreatAlert: vi.fn(),
+  mockInsertEvent: vi.fn(),
+  mockUpdateAlertaStatus: vi.fn(),
+  mockInsertVoiceCommand: vi.fn(),
+  mockUpdateVoiceCommand: vi.fn(),
+  mockCreateNotification: vi.fn(),
+  mockGetOwnerProfile: vi.fn(),
+  mockEnqueueSolanaEvent: vi.fn(),
+  mockSendAlert: vi.fn(),
+  mockPublishCommand: vi.fn(),
+  mockEmitToDevice: vi.fn(),
+}));
+
 vi.mock('@sentry/node', () => ({
   captureException: mockCaptureException,
   init: vi.fn(),
@@ -36,22 +65,18 @@ vi.mock('../config', () => ({
 }));
 
 // FCM mocks
-const mockSendPush = vi.fn();
 vi.mock('../services/fcm', () => ({
   sendPush: mockSendPush,
   sendBulkPush: vi.fn(),
 }));
 
 // Email/Resend mocks
-const mockSendThreatAlert = vi.fn();
 vi.mock('../services/email', () => ({
   sendThreatAlert: mockSendThreatAlert,
   sendWeeklyReport: vi.fn(),
 }));
 
 // DB mocks
-const mockInsertEvent = vi.fn();
-const mockUpdateAlertaStatus = vi.fn();
 vi.mock('../lib/db/threat_events', () => ({
   insertEvent: mockInsertEvent,
   updateAlertaStatus: mockUpdateAlertaStatus,
@@ -61,8 +86,6 @@ vi.mock('../lib/db/threat_events', () => ({
   getEventsByDevice: vi.fn(),
 }));
 
-const mockInsertVoiceCommand = vi.fn();
-const mockUpdateVoiceCommand = vi.fn();
 vi.mock('../lib/db/voice_commands', () => ({
   insertVoiceCommand: mockInsertVoiceCommand,
   updateVoiceCommand: mockUpdateVoiceCommand,
@@ -70,7 +93,6 @@ vi.mock('../lib/db/voice_commands', () => ({
   getVoiceCommandsByDevice: vi.fn(),
 }));
 
-const mockCreateNotification = vi.fn();
 vi.mock('../lib/db/notifications', () => ({
   createNotification: mockCreateNotification,
   markAsRead: vi.fn(),
@@ -78,7 +100,6 @@ vi.mock('../lib/db/notifications', () => ({
   markAllAsRead: vi.fn(),
 }));
 
-const mockGetOwnerProfile = vi.fn();
 vi.mock('../lib/db/profiles', () => ({
   getOwnerProfileForDevice: mockGetOwnerProfile,
   getProfileById: vi.fn(),
@@ -108,14 +129,12 @@ vi.mock('../lib/db/automations', () => ({
   getAutomationById: vi.fn(),
 }));
 
-const mockEnqueueSolanaEvent = vi.fn();
 vi.mock('../blockchain/solanaQueue', () => ({
   enqueueSolanaEvent: mockEnqueueSolanaEvent,
   startSolanaQueue: vi.fn(),
   _queueLength: vi.fn().mockReturnValue(0),
 }));
 
-const mockSendAlert = vi.fn();
 vi.mock('../services/alerta', () => ({
   sendAlert: mockSendAlert,
   buildSurgePayload: vi.fn().mockReturnValue({ title: 'test', message: 'test', severity: 'High', channelRef: 'test' }),
@@ -124,7 +143,6 @@ vi.mock('../services/alerta', () => ({
   buildOfflinePayload: vi.fn().mockReturnValue({}),
 }));
 
-const mockPublishCommand = vi.fn();
 vi.mock('../services/mqtt', () => ({
   publishCommand: mockPublishCommand,
   connectMQTT: vi.fn(),
@@ -132,7 +150,6 @@ vi.mock('../services/mqtt', () => ({
   validateDeviceToken: vi.fn(),
 }));
 
-const mockEmitToDevice = vi.fn();
 vi.mock('../socket', () => ({
   emitToDevice: mockEmitToDevice,
   initSocket: vi.fn(),
@@ -534,7 +551,7 @@ describe('Property 12: Voice confidence threshold enforced', () => {
     await fc.assert(
       fc.asyncProperty(
         // Confidence strictly above threshold
-        fc.float({ min: MIN_CONFIDENCE + 0.01, max: 1.0 }),
+        fc.float({ min: Math.fround(MIN_CONFIDENCE + 0.01), max: Math.fround(1.0) }),
         fc.constantFrom('relay off', 'relay on'),
         async (confidence, transcript) => {
           vi.clearAllMocks();
@@ -597,7 +614,7 @@ describe('Property 12: Voice confidence threshold enforced', () => {
   it('Solana memo NOT enqueued for below-threshold voice commands', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.float({ min: 0, max: MIN_CONFIDENCE - 0.01 }),
+        fc.float({ min: Math.fround(0.0), max: Math.fround(MIN_CONFIDENCE - 0.01) }),
         async (confidence) => {
           fc.pre(confidence < MIN_CONFIDENCE);
           vi.clearAllMocks();

@@ -7,7 +7,7 @@ import { enqueueSolanaEvent } from '../blockchain/solanaQueue';
 import { AURA_SOLANA_EVENTS } from '../blockchain/events';
 import { buildSurgePayload, sendAlert } from '../services/alerta';
 import { notifyThreat } from '../services/notify';
-import { publishCommand } from '../services/mqtt';
+import * as mqttService from '../services/mqtt';
 import { emitToDevice } from '../socket';
 import { SOCKET_EVENTS } from '../socket/events';
 
@@ -75,7 +75,7 @@ export async function handleSurge(
 
   // 7. Publish relay command back to the device.
   try {
-    await publishCommand(device.id, {
+    await mqttService.publishCommand(device.id, {
       command: 'relay_off',
       channel: relayChannel,
       requestedBy: 'aura-auto',

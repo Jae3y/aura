@@ -18,7 +18,38 @@ import fc from 'fast-check';
 // Mocks — all external I/O is intercepted
 // ---------------------------------------------------------------------------
 
-const mockCaptureException = vi.fn();
+const {
+  mockCaptureException,
+  mockInsertEvent,
+  mockUpdateAlertaStatus,
+  mockFindByAlertaId,
+  mockInsertReading,
+  mockCreateNotification,
+  mockGetOwnerProfile,
+  mockGetDeviceByToken,
+  mockEnqueueSolanaEvent,
+  mockSendAlert,
+  mockSendPush,
+  mockSendThreatAlert,
+  mockPublishCommand,
+  mockEmitToDevice,
+} = vi.hoisted(() => ({
+  mockCaptureException: vi.fn(),
+  mockInsertEvent: vi.fn(),
+  mockUpdateAlertaStatus: vi.fn(),
+  mockFindByAlertaId: vi.fn(),
+  mockInsertReading: vi.fn(),
+  mockCreateNotification: vi.fn(),
+  mockGetOwnerProfile: vi.fn(),
+  mockGetDeviceByToken: vi.fn(),
+  mockEnqueueSolanaEvent: vi.fn(),
+  mockSendAlert: vi.fn(),
+  mockSendPush: vi.fn(),
+  mockSendThreatAlert: vi.fn(),
+  mockPublishCommand: vi.fn(),
+  mockEmitToDevice: vi.fn(),
+}));
+
 vi.mock('@sentry/node', () => ({
   captureException: mockCaptureException,
   init: vi.fn(),
@@ -26,6 +57,9 @@ vi.mock('@sentry/node', () => ({
 
 vi.mock('../config', () => ({
   config: {
+    SUPABASE_URL: 'http://localhost:54321',
+    SUPABASE_SERVICE_KEY: 'test-key',
+    SUPABASE_ANON_KEY: 'test-anon-key',
     SOLANA_RPC_URL: 'https://api.devnet.solana.com',
     SOLANA_KEYPAIR: 'test-keypair',
     NODE_ENV: 'test',
@@ -38,10 +72,7 @@ vi.mock('../config', () => ({
   },
 }));
 
-// DB mocks — return values set per test
-const mockInsertEvent = vi.fn();
-const mockUpdateAlertaStatus = vi.fn();
-const mockFindByAlertaId = vi.fn();
+
 vi.mock('../lib/db/threat_events', () => ({
   insertEvent: mockInsertEvent,
   updateAlertaStatus: mockUpdateAlertaStatus,
@@ -51,14 +82,12 @@ vi.mock('../lib/db/threat_events', () => ({
   getEventsByDevice: vi.fn(),
 }));
 
-const mockInsertReading = vi.fn();
 vi.mock('../lib/db/sensor_readings', () => ({
   insertReading: mockInsertReading,
   getRecentReadings: vi.fn(),
   getReadingsByRange: vi.fn(),
 }));
 
-const mockCreateNotification = vi.fn();
 vi.mock('../lib/db/notifications', () => ({
   createNotification: mockCreateNotification,
   markAsRead: vi.fn(),
@@ -66,7 +95,6 @@ vi.mock('../lib/db/notifications', () => ({
   markAllAsRead: vi.fn(),
 }));
 
-const mockGetOwnerProfile = vi.fn();
 vi.mock('../lib/db/profiles', () => ({
   getOwnerProfileForDevice: mockGetOwnerProfile,
   getProfileById: vi.fn(),
@@ -75,7 +103,6 @@ vi.mock('../lib/db/profiles', () => ({
   updateFcmToken: vi.fn(),
 }));
 
-const mockGetDeviceByToken = vi.fn();
 vi.mock('../lib/db/devices', () => ({
   getDeviceByToken: mockGetDeviceByToken,
   createDevice: vi.fn(),
@@ -88,14 +115,12 @@ vi.mock('../lib/db/devices', () => ({
   updateNftMintAddress: vi.fn(),
 }));
 
-const mockEnqueueSolanaEvent = vi.fn();
 vi.mock('../blockchain/solanaQueue', () => ({
   enqueueSolanaEvent: mockEnqueueSolanaEvent,
   startSolanaQueue: vi.fn(),
   _queueLength: vi.fn().mockReturnValue(0),
 }));
 
-const mockSendAlert = vi.fn();
 vi.mock('../services/alerta', () => ({
   sendAlert: mockSendAlert,
   buildSurgePayload: vi.fn().mockReturnValue({ title: 'Surge', message: 'test', severity: 'High', channelRef: 'test' }),
@@ -104,28 +129,16 @@ vi.mock('../services/alerta', () => ({
   buildOfflinePayload: vi.fn().mockReturnValue({}),
 }));
 
-const mockSendPush = vi.fn();
 vi.mock('../services/fcm', () => ({
   sendPush: mockSendPush,
   sendBulkPush: vi.fn(),
 }));
 
-const mockSendThreatAlert = vi.fn();
 vi.mock('../services/email', () => ({
   sendThreatAlert: mockSendThreatAlert,
   sendWeeklyReport: vi.fn(),
 }));
 
-const mockPublishCommand = vi.fn();
-vi.mock('../services/mqtt', () => ({
-  publishCommand: mockPublishCommand,
-  connectMQTT: vi.fn(),
-  getMqttClient: vi.fn(),
-  onMessage: vi.fn(), // we call the real onMessage via the service import
-  validateDeviceToken: vi.fn(),
-}));
-
-const mockEmitToDevice = vi.fn();
 vi.mock('../socket', () => ({
   emitToDevice: mockEmitToDevice,
   initSocket: vi.fn(),
@@ -151,7 +164,8 @@ vi.mock('../lib/db/automations', () => ({
 }));
 
 // We import the real handlers to test the integration
-import { onMessage } from '../services/mqtt';
+import * as mqttService from '../services/mqtt';
+const { onMessage } = mqttService;
 import type { Device, ThreatEvent } from '../types/database';
 import { AURA_SOLANA_EVENTS } from '../blockchain/events';
 
@@ -247,8 +261,7 @@ describe('Integration: MQTT surge → full pipeline', () => {
           mockGetDeviceByToken.mockResolvedValue(device);
           mockInsertEvent.mockResolvedValue(event);
           mockUpdateAlertaStatus.mockResolvedValue(undefined);
-          mockSendAlert.mockResolvedValue({ requestRef: `alerta-ref-${deviceId}`, success: true });
-          mockPublishCommand.mockResolvedValue(undefined);
+          const publishSpy = vi.spyOn(mqttService, 'publishCommand').mockResolvedValue(undefined);
           mockEmitToDevice.mockReturnValue(undefined);
           mockGetOwnerProfile.mockResolvedValue(null);
 
@@ -290,7 +303,7 @@ describe('Integration: MQTT surge → full pipeline', () => {
           expect(threatCalls[0][0]).toBe(deviceId);
 
           // 5. Relay command published back to device
-          expect(mockPublishCommand).toHaveBeenCalledWith(
+          expect(publishSpy).toHaveBeenCalledWith(
             deviceId,
             expect.objectContaining({ command: 'relay_off' })
           );

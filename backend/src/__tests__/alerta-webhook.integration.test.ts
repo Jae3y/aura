@@ -70,7 +70,8 @@ import { errorHandler, notFoundHandler } from '../middleware/errorHandler';
 
 // Must match the dev fallback in config/index.ts so HMAC verification
 // uses the same secret that the config module already loaded.
-const TEST_ALERTA_API_KEY = 'dev-alerta-key';
+import { config } from '../config';
+const TEST_ALERTA_API_KEY = config.ALERTA_API_KEY;
 
 /** Matches the threat event the webhook is referencing */
 const MOCK_THREAT_EVENT = {

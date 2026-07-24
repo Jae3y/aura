@@ -139,9 +139,17 @@ function DesktopPrimaryNav({ pathname }: { pathname: string | null }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isFullScreenRoute = pathname?.startsWith("/onboarding");
+  const isFullScreenRoute = pathname === "/" || pathname?.startsWith("/onboarding");
   const title = getRouteTitle(pathname);
   const secondaryItems = getSecondaryItems(pathname);
+
+  if (pathname === "/") {
+    return (
+      <div className="min-h-dvh w-full bg-base text-text-primary">
+        {children}
+      </div>
+    );
+  }
 
   if (isFullScreenRoute) {
     return (

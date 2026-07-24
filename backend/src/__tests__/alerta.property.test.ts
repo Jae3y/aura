@@ -15,7 +15,10 @@ import fc from 'fast-check';
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockCaptureException = vi.fn();
+const { mockCaptureException } = vi.hoisted(() => ({
+  mockCaptureException: vi.fn(),
+}));
+
 vi.mock('@sentry/node', () => ({
   captureException: mockCaptureException,
   init: vi.fn(),

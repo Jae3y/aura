@@ -15,8 +15,22 @@ import fc from 'fast-check';
 // Mocks — all DB helpers tracked so we can assert they're NOT called.
 // ---------------------------------------------------------------------------
 
-const mockInsertEvent = vi.fn();
-const mockUpdateAlertaStatus = vi.fn();
+const {
+  mockInsertEvent,
+  mockUpdateAlertaStatus,
+  mockInsertReading,
+  mockInsertVoiceCommand,
+  mockUpdateVoiceCommand,
+  mockGetDeviceByToken,
+} = vi.hoisted(() => ({
+  mockInsertEvent: vi.fn(),
+  mockUpdateAlertaStatus: vi.fn(),
+  mockInsertReading: vi.fn(),
+  mockInsertVoiceCommand: vi.fn(),
+  mockUpdateVoiceCommand: vi.fn(),
+  mockGetDeviceByToken: vi.fn(),
+}));
+
 vi.mock('../lib/db/threat_events', () => ({
   insertEvent: mockInsertEvent,
   updateSolanaSignature: vi.fn(),
@@ -26,15 +40,12 @@ vi.mock('../lib/db/threat_events', () => ({
   getEventsByDevice: vi.fn(),
 }));
 
-const mockInsertReading = vi.fn();
 vi.mock('../lib/db/sensor_readings', () => ({
   insertReading: mockInsertReading,
   getRecentReadings: vi.fn(),
   getReadingsByRange: vi.fn(),
 }));
 
-const mockInsertVoiceCommand = vi.fn();
-const mockUpdateVoiceCommand = vi.fn();
 vi.mock('../lib/db/voice_commands', () => ({
   insertVoiceCommand: mockInsertVoiceCommand,
   updateVoiceCommand: mockUpdateVoiceCommand,
@@ -43,7 +54,6 @@ vi.mock('../lib/db/voice_commands', () => ({
 }));
 
 // Track calls to validateDeviceToken
-const mockGetDeviceByToken = vi.fn();
 vi.mock('../lib/db/devices', () => ({
   getDeviceByToken: mockGetDeviceByToken,
   createDevice: vi.fn(),
@@ -114,11 +124,6 @@ vi.mock('../socket', () => ({
   getIO: vi.fn(),
 }));
 
-vi.mock('../services/mqtt', () => ({
-  publishCommand: vi.fn().mockResolvedValue(undefined),
-  connectMQTT: vi.fn(),
-  getMqttClient: vi.fn(),
-}));
 
 vi.mock('@sentry/node', () => ({
   captureException: vi.fn(),

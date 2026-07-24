@@ -15,16 +15,40 @@ import fc from 'fast-check';
 // Mocks
 // ---------------------------------------------------------------------------
 
-// Track calls to writeMonthlyAudit
-const mockWriteMonthlyAudit = vi.fn();
+const {
+  mockWriteMonthlyAudit,
+  mockInsertEvent,
+  mockUpdateAlertaStatus,
+  mockInsertReading,
+  mockInsertVoiceCommand,
+  mockUpdateVoiceCommand,
+  mockCreateNotification,
+  mockGetOwnerProfile,
+  mockSetPresence,
+  mockGetZonesByDevice,
+  mockGetAutomationsByDevice,
+  mockRecordTrigger,
+} = vi.hoisted(() => ({
+  mockWriteMonthlyAudit: vi.fn(),
+  mockInsertEvent: vi.fn(),
+  mockUpdateAlertaStatus: vi.fn(),
+  mockInsertReading: vi.fn(),
+  mockInsertVoiceCommand: vi.fn(),
+  mockUpdateVoiceCommand: vi.fn(),
+  mockCreateNotification: vi.fn(),
+  mockGetOwnerProfile: vi.fn(),
+  mockSetPresence: vi.fn(),
+  mockGetZonesByDevice: vi.fn(),
+  mockGetAutomationsByDevice: vi.fn(),
+  mockRecordTrigger: vi.fn(),
+}));
+
 vi.mock('../services/lisk', () => ({
   writeMonthlyAudit: mockWriteMonthlyAudit,
   initLiskClient: vi.fn(),
 }));
 
 // Mock all real-time handler dependencies so they don't make network calls
-const mockInsertEvent = vi.fn();
-const mockUpdateAlertaStatus = vi.fn();
 vi.mock('../lib/db/threat_events', () => ({
   insertEvent: mockInsertEvent,
   updateSolanaSignature: vi.fn(),
@@ -34,15 +58,12 @@ vi.mock('../lib/db/threat_events', () => ({
   getEventsByDevice: vi.fn(),
 }));
 
-const mockInsertReading = vi.fn();
 vi.mock('../lib/db/sensor_readings', () => ({
   insertReading: mockInsertReading,
   getRecentReadings: vi.fn(),
   getReadingsByRange: vi.fn(),
 }));
 
-const mockInsertVoiceCommand = vi.fn();
-const mockUpdateVoiceCommand = vi.fn();
 vi.mock('../lib/db/voice_commands', () => ({
   insertVoiceCommand: mockInsertVoiceCommand,
   updateVoiceCommand: mockUpdateVoiceCommand,
@@ -50,7 +71,6 @@ vi.mock('../lib/db/voice_commands', () => ({
   getVoiceCommandsByDevice: vi.fn(),
 }));
 
-const mockCreateNotification = vi.fn();
 vi.mock('../lib/db/notifications', () => ({
   createNotification: mockCreateNotification,
   markAsRead: vi.fn(),
@@ -58,7 +78,6 @@ vi.mock('../lib/db/notifications', () => ({
   markAllAsRead: vi.fn(),
 }));
 
-const mockGetOwnerProfile = vi.fn();
 vi.mock('../lib/db/profiles', () => ({
   getOwnerProfileForDevice: mockGetOwnerProfile,
   getProfileById: vi.fn(),
@@ -67,8 +86,6 @@ vi.mock('../lib/db/profiles', () => ({
   updateFcmToken: vi.fn(),
 }));
 
-const mockSetPresence = vi.fn();
-const mockGetZonesByDevice = vi.fn();
 vi.mock('../lib/db/zones', () => ({
   setPresence: mockSetPresence,
   getZonesByDevice: mockGetZonesByDevice,
@@ -78,8 +95,6 @@ vi.mock('../lib/db/zones', () => ({
   getZoneById: vi.fn(),
 }));
 
-const mockGetAutomationsByDevice = vi.fn();
-const mockRecordTrigger = vi.fn();
 vi.mock('../lib/db/automations', () => ({
   getAutomationsByDevice: mockGetAutomationsByDevice,
   recordTrigger: mockRecordTrigger,
@@ -472,7 +487,7 @@ describe('Property 10: Monthly report counts match DB records', () => {
           relayActivations: fc.integer({ min: 0, max: 500 }),
           totalAnomalies: fc.integer({ min: 0, max: 500 }),
           totalReadings: fc.integer({ min: 1, max: 10000 }),
-          uptimeRatio: fc.float({ min: 0, max: 1 }),
+          uptimeRatio: fc.float({ min: Math.fround(0), max: Math.fround(1), noNaN: true }),
         }),
         async ({ totalThreats, relayActivations, totalAnomalies, totalReadings, uptimeRatio }) => {
           // Replicate the health score calculation logic from auraScore.ts
