@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/lib/stores/authStore";
+import { playRelayClick } from "@/components/ui/TactileSound";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Home", icon: Home },
@@ -19,28 +20,22 @@ export function BottomNav() {
   const { isAuthenticated, walletAddress } = useAuthStore();
 
   return (
-    <nav className="fixed bottom-0 left-0 z-50 w-full border-t border-zinc-800 bg-card lg:hidden">
+    <nav className="fixed bottom-0 left-0 z-50 w-full border-t border-white/10 bg-black/95 backdrop-blur-md lg:hidden font-mono">
       <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-2">
         {/* Connect wallet item — shown when not authenticated */}
         {!isAuthenticated && (
           <Link
             href="/connect"
+            onClick={playRelayClick}
             className={clsx(
-              "flex flex-col items-center justify-center w-full h-full space-y-1",
+              "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors",
               pathname === "/connect"
-                ? "text-accent-cyan"
-                : "text-emerald-400 hover:text-emerald-300 transition-colors"
+                ? "text-accent-cyan font-bold"
+                : "text-accent-teal hover:text-white"
             )}
           >
-            <Wallet
-              size={20}
-              className={clsx(
-                pathname === "/connect"
-                  ? "drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]"
-                  : "drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]"
-              )}
-            />
-            <span className="text-[10px] uppercase font-bold tracking-wider">Connect</span>
+            <Wallet size={18} />
+            <span className="text-[9.5px] uppercase font-bold tracking-wider">Connect</span>
           </Link>
         )}
 
@@ -48,10 +43,11 @@ export function BottomNav() {
         {isAuthenticated && walletAddress && (
           <Link
             href="/profile"
+            onClick={playRelayClick}
             className="flex flex-col items-center justify-center w-full h-full space-y-1 text-accent-cyan"
           >
-            <Wallet size={20} className="drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
-            <span className="text-[10px] font-mono tracking-tight">
+            <Wallet size={18} />
+            <span className="text-[9.5px] font-mono tracking-tight font-bold">
               {walletAddress.slice(0, 4)}…{walletAddress.slice(-4)}
             </span>
           </Link>
@@ -61,10 +57,11 @@ export function BottomNav() {
         {isAuthenticated && !walletAddress && (
           <Link
             href="/profile"
+            onClick={playRelayClick}
             className="flex flex-col items-center justify-center w-full h-full space-y-1 text-accent-cyan"
           >
-            <User size={20} className="drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
-            <span className="text-[10px] uppercase font-bold tracking-wider">Profile</span>
+            <User size={18} />
+            <span className="text-[9.5px] uppercase font-bold tracking-wider">Profile</span>
           </Link>
         )}
 
@@ -76,19 +73,22 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={playRelayClick}
               className={clsx(
-                "flex flex-col items-center justify-center w-full h-full space-y-1",
+                "flex flex-col items-center justify-center w-full h-full space-y-1 transition-all relative",
                 isActive
-                  ? "text-accent-cyan"
-                  : "text-text-muted hover:text-text-secondary transition-colors"
+                  ? "text-accent-cyan font-bold"
+                  : "text-text-muted hover:text-white"
               )}
             >
-              <Icon size={20} className={clsx(isActive && "drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]")} />
-              <span className="text-[10px] uppercase font-bold tracking-wider">{item.label}</span>
+              {isActive && (
+                <span className="absolute top-1 h-1 w-1 rounded-full bg-accent-cyan shadow-[0_0_6px_rgba(6,182,212,1)]" />
+              )}
+              <Icon size={18} />
+              <span className="text-[9.5px] uppercase font-bold tracking-wider">{item.label}</span>
             </Link>
           );
         })}
-
       </div>
     </nav>
   );

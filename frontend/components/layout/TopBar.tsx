@@ -1,11 +1,13 @@
 "use client";
 
-import { Shield, Bell, ArrowLeft, AlertTriangle, Settings, User } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Shield, Bell, ArrowLeft, AlertTriangle, Settings, User, Volume2, VolumeX } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { useThreats } from "@/lib/queries/useThreats";
 import { useEnvironmentStore } from "@/lib/stores/environmentStore";
+import { playRelayClick, toggleSound, isSoundEnabled } from "@/components/ui/TactileSound";
 
 interface TopBarProps {
   title?: string;
@@ -18,6 +20,17 @@ export function TopBar({ title, showBack = false, secondaryItems = [] }: TopBarP
   const pathname = usePathname();
   const { data: threats = [] } = useThreats("1", 100);
   const { config } = useEnvironmentStore();
+  const [soundActive, setSoundActive] = useState(true);
+
+  useEffect(() => {
+    setSoundActive(isSoundEnabled());
+  }, []);
+
+  const handleToggleSound = () => {
+    const next = toggleSound();
+    setSoundActive(next);
+    if (next) playRelayClick();
+  };
   
   const openThreatCount = threats.filter((threat) => threat.alerta_status === "open").length;
 
@@ -26,73 +39,124 @@ export function TopBar({ title, showBack = false, secondaryItems = [] }: TopBarP
   const shouldShowBack = showBack || isDeepRoute;
 
   return (
-    <header className="sticky left-0 top-0 z-40 w-full border-b border-white/10 bg-base/90 backdrop-blur-md">
+    <header className="sticky left-0 top-0 z-40 w-full border-b border-white/10 bg-black/90 backdrop-blur-md font-sans">
       <div className="mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        
+        {/* Left: Brand / Title */}
         <div className="flex items-center">
           {shouldShowBack ? (
             <button
-              onClick={() => router.back()}
-              className="mr-3 text-text-secondary hover:text-text-primary transition-colors"
+              onClick={() => {
+                playRelayClick();
+                router.back();
+              }}
+              className="mr-3 flex h-8 w-8 items-center justify-center border border-white/10 bg-white/[0.04] text-text-secondary hover:border-accent-cyan/40 hover:text-white transition-colors"
               aria-label="Go back"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={16} />
             </button>
           ) : (
-            <Shield className="mr-3 text-accent-cyan" size={20} />
+            <span className="mr-3 flex h-8 w-8 items-center justify-center border border-accent-cyan/40 bg-accent-cyan/10">
+              <Shield className="text-accent-cyan" size={16} />
+            </span>
           )}
+          
           {title && (
-            <h1 className="font-heading text-base font-bold uppercase text-text-primary sm:text-lg">
-              {title}
-            </h1>
+            <div className="flex flex-col">
+              <h1 className="font-heading text-sm font-bold uppercase tracking-[0.14em] text-white sm:text-base">
+                {title}
+              </h1>
+              <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted hidden sm:inline">
+                AURA // COMMAND_PWA
+              </span>
+            </div>
           )}
         </div>
         
-        <div className="flex items-center gap-3 text-text-secondary">
-          <Link href="/alerta" className="relative rounded-lg p-2 transition-colors hover:bg-red-500/10 hover:text-red-200" aria-label="Open Alerta">
-            <AlertTriangle size={20} className={openThreatCount > 0 ? "text-red-400" : ""} />
+        {/* Right: Actions & Indicators */}
+        <div className="flex items-center gap-2 sm:gap-3 text-text-secondary">
+          
+          {/* Audio Toggle */}
+          <button
+            onClick={handleToggleSound}
+            title={soundActive ? "Mute Tactile Sound" : "Enable Tactile Sound"}
+            className="flex h-8 w-8 items-center justify-center border border-white/10 bg-white/[0.04] text-text-secondary hover:border-accent-cyan/40 hover:text-accent-cyan transition-colors"
+          >
+            {soundActive ? <Volume2 size={15} /> : <VolumeX size={15} className="text-text-muted" />}
+          </button>
+
+          {/* Alerta Badge */}
+          <Link
+            href="/alerta"
+            onClick={playRelayClick}
+            className="relative flex h-8 w-8 items-center justify-center border border-white/10 bg-white/[0.04] text-text-secondary hover:border-accent-danger/40 hover:text-accent-danger transition-colors"
+            aria-label="Open Alerta"
+          >
+            <AlertTriangle size={15} className={openThreatCount > 0 ? "text-accent-danger animate-pulse" : ""} />
             {openThreatCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-1.5 bg-accent-danger text-black font-mono text-[9px] font-bold w-4 h-4 flex items-center justify-center">
                 {openThreatCount}
               </span>
             )}
           </Link>
-          <button aria-label="Notifications" className="rounded-lg p-2 transition-colors hover:bg-white/5 hover:text-text-primary">
-            <Bell size={20} />
+
+          {/* Notifications */}
+          <button
+            onClick={playRelayClick}
+            aria-label="Notifications"
+            className="flex h-8 w-8 items-center justify-center border border-white/10 bg-white/[0.04] text-text-secondary hover:border-accent-cyan/40 hover:text-white transition-colors"
+          >
+            <Bell size={15} />
           </button>
-          <Link href="/profile" aria-label="Profile" className="rounded-lg p-2 transition-colors hover:bg-white/5 hover:text-text-primary">
-            <User size={20} />
-          </Link>
-          <Link href="/settings" aria-label="Settings" className="hidden rounded-lg p-2 transition-colors hover:bg-white/5 hover:text-text-primary sm:block">
-            <Settings size={20} />
+
+          {/* Profile */}
+          <Link
+            href="/profile"
+            onClick={playRelayClick}
+            aria-label="Profile"
+            className="flex h-8 w-8 items-center justify-center border border-white/10 bg-white/[0.04] text-text-secondary hover:border-accent-cyan/40 hover:text-white transition-colors"
+          >
+            <User size={15} />
           </Link>
 
-          {/* Environment Badge — clickable, links to /env-control */}
+          {/* Settings */}
+          <Link
+            href="/settings"
+            onClick={playRelayClick}
+            aria-label="Settings"
+            className="hidden sm:flex h-8 w-8 items-center justify-center border border-white/10 bg-white/[0.04] text-text-secondary hover:border-accent-cyan/40 hover:text-white transition-colors"
+          >
+            <Settings size={15} />
+          </Link>
+
+          {/* Environment Switcher Badge */}
           <Link
             href="/env-control"
+            onClick={playRelayClick}
             aria-label="Switch environment"
-            className={`hidden sm:flex items-center gap-1.5 rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest border transition-opacity hover:opacity-80 ${config.badgeBg} ${config.badgeBorder} ${config.badgeColor}`}
+            className={`hidden sm:flex items-center gap-1.5 border px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] transition-all hover:border-white/40 ${config.badgeBg} ${config.badgeBorder} ${config.badgeColor}`}
           >
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
-            </span>
+            <span className="led-indicator led-green" />
             {config.shortName}
           </Link>
         </div>
       </div>
+
+      {/* Secondary Nav Pills */}
       {secondaryItems.length > 0 && (
-        <nav className="mx-auto flex w-full max-w-6xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6 lg:px-8">
+        <nav className="mx-auto flex w-full max-w-6xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6 lg:px-8 font-mono">
           {secondaryItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={playRelayClick}
                 className={clsx(
-                  "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors",
+                  "shrink-0 border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] transition-all",
                   isActive
-                    ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-200"
-                    : "border-white/10 bg-white/[0.03] text-text-secondary hover:bg-white/10 hover:text-white"
+                    ? "border-accent-cyan bg-accent-cyan/15 text-accent-cyan"
+                    : "border-white/10 bg-white/[0.03] text-text-secondary hover:border-white/20 hover:text-white"
                 )}
               >
                 {item.label}
